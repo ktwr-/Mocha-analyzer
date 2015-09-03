@@ -1,0 +1,23 @@
+<html>
+<head>
+<title>testscript</title>
+<script>
+function tax(arg) {
+	var x = new Array();
+	for(i=0;i<arg.length;i++){
+		x[i] = arg[i] * 1.05;
+	}
+	return x;
+}
+</script>
+</head>
+<body>
+<script>
+var a = new Array(500,1000,5000);
+var b = new Array();
+b = tax(a);
+document.write(a,"<br/>");
+document.write(b);
+</script>
+</body>
+</html>
