@@ -4,6 +4,9 @@ import java.io.FileReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class jscript {
 	
@@ -29,25 +32,36 @@ public class jscript {
 			BufferedReader bf = new BufferedReader(filereader);
 			/*flag is which part is the match word,script,eval or style*/
 			int i;
-			String str;
+			String str,pat1,pat2="";
 			while((str = bf.readLine()) != null){
 			
 				/*find tag*/
 				for(i =0;i < removetag.size();i++){
 					/*find script,eval or style tag*/
-					if(str.matches(".*<"+removetag.get(i)+">.*")){
+					pat1 = "(.*)(<"+removetag.get(i)+">.*)";
+					pat2 = "(.*</"+removetag.get(i)+">)(.*)";
+					if(str.matches(pat1)){
+						Pattern p = Pattern.compile(pat1);
+						Matcher m = p.matcher(str);
+						if(m.find()){
+							// take word after <script>
+							System.out.println(m.group(2));
+						}
 						break;
 					}
 				}
 				/*write htmlfile for script*/
-			
 				switch(i){
 				case 0:
-					System.out.println(str);
-					while(!(str = bf.readLine()).matches(".*</script>.*")){
+					while(!(str = bf.readLine()).matches(pat2)){
 						System.out.println(str);
 					}
-					System.out.println(str+"\nendscript");
+					Pattern p1 = Pattern.compile(pat2);
+					Matcher m1 = p1.matcher(str);
+					if(m1.find()){
+						System.out.println(m1.group(1)+"\nendscript");
+					}
+					
 				default:
 					System.out.println(str);
 					break;
