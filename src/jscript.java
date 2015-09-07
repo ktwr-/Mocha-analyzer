@@ -11,8 +11,8 @@ public class jscript {
 	
 	public static void main(String args[]){
 		init();
-		System.out.println(args[0]);
-		findCSP(args[0]);
+		//System.out.println(args[0]);
+		findCSP("test");
 	}
 	public static void init(){
 		removetag.add("script");
@@ -26,14 +26,33 @@ public class jscript {
 		try{
 			File file = new File("./test/test.html");
 			FileReader filereader = new FileReader(file);
-			int ch;
-			while((ch = filereader.read()) != -1){
-				System.out.print((char)ch);
+			BufferedReader bf = new BufferedReader(filereader);
+			/*flag is which part is the match word,script,eval or style*/
+			int i;
+			String str;
+			while((str = bf.readLine()) != null){
+			
+				/*find tag*/
+				for(i =0;i < removetag.size();i++){
+					/*find script,eval or style tag*/
+					if(str.matches(".*<"+removetag.get(i)+">.*")){
+						break;
+					}
+				}
+				/*write htmlfile for script*/
+			
+				switch(i){
+				case 0:
+					System.out.println(str);
+					while(!(str = bf.readLine()).matches(".*</script>.*")){
+						System.out.println(str);
+					}
+					System.out.println(str+"\nendscript");
+				default:
+					System.out.println(str);
+					break;
+				}
 			}
-			/*find script tag and write another file */
-			
-			/*write htmlfile for script*/
-			
 			filereader.close();
 		}catch(FileNotFoundException e){
 			System.out.println(e);
