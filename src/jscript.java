@@ -63,17 +63,22 @@ public class jscript {
 				/*write htmlfile for script*/
 				switch(i){
 				case 0:
-					while(!(str = bf.readLine()).matches(pat2)){
-						//System.out.println(str);
-						div += str+"\n";
+					if(!str.contains("src")){
+						while(!(str = bf.readLine()).matches(pat2)){
+							//System.out.println(str);
+							div += str+"\n";
+						}
+						Pattern p1 = Pattern.compile(pat2);
+						Matcher m1 = p1.matcher(str);
+						if(m1.find()){
+							//System.out.println(m1.group(1)+"\n");
+							div += m1.group(1);
+						}
+						dividefile(div,i);
+						System.out.println(div+"\n");
+					}else{
+						/*if script tag contains src,this script don't need divide file*/
 					}
-					Pattern p1 = Pattern.compile(pat2);
-					Matcher m1 = p1.matcher(str);
-					if(m1.find()){
-						//System.out.println(m1.group(1)+"\n");
-						div += m1.group(1);
-					}
-					dividefile(div,i);
 					break;
 				default:
 					System.out.println(str);
@@ -90,7 +95,7 @@ public class jscript {
 		
 	}
 	
-	/*divide file from html*/
+	/*divide file from html(now only Javascript)*/
 	public static void dividefile(String text,int type){
 		//System.out.println(text);
 		/*write file*/
