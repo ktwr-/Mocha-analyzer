@@ -16,18 +16,16 @@ public class jscript {
 	static char stylefilename = 'a';
 	
 	public static void main(String args[]){
-		init();
+		inline_init();
 		//System.out.println(args[0]);
 		analyzehtml("test");
 
 	}
-	public static void init(){
+	public static void inline_init(){
 		removetag.add("script");
 		removetag.add("style");
-		removetag.add("eval");
 		fileextension.add(".js");
-		fileextension.add("eval");
-		fileextension.add("css");
+		fileextension.add(".css");
 		
 	}
 	
@@ -39,7 +37,7 @@ public class jscript {
 			BufferedReader bf = new BufferedReader(filereader);
 			/*flag is which part is the match word,script,eval or style*/
 			int i;
-			String str,pat1,pat2="";
+			String str,pat1,pat2="",pat3="";
 			String div="";
 			while((str = bf.readLine()) != null){
 			
@@ -47,15 +45,11 @@ public class jscript {
 				for(i =0;i < removetag.size();i++){
 					/*find script,eval or style tag*/
 					pat1 = "(.*)(<"+removetag.get(i)+".*)";
-					pat2 = "(.*</"+removetag.get(i)+">)(.*)";
+					pat2 = "(.*)(</"+removetag.get(i)+">)(.*)";
+					pat3 = "(.*)(<"+removetag.get(i)+".*>)(.*)(</"+removetag.get(i)+">)(.*)";
 					if(str.matches(pat1)){
-						Pattern p = Pattern.compile(pat1);
-						Matcher m = p.matcher(str);
-						if(m.find()){
-							// take word after <script>
-							//System.out.println(m.group(2));
-							div = m.group(2)+"\n";
-						}
+						Matcher m = patternmatch(str,pat1);
+						div=m.group(2)+"\n";
 						break;
 					}
 				}
@@ -64,20 +58,35 @@ public class jscript {
 				switch(i){
 				case 0:
 					if(!str.contains("src")){
-						while(!(str = bf.readLine()).matches(pat2)){
-							//System.out.println(str);
-							div += str+"\n";
-						}
-						Pattern p1 = Pattern.compile(pat2);
-						Matcher m1 = p1.matcher(str);
-						if(m1.find()){
-							//System.out.println(m1.group(1)+"\n");
-							div += m1.group(1);
-						}
+						if(str.matches(pat3)){
+							Matcher m = patternmatch(str,pat3);
+							div = m.group(3);
+							System.out.println(div);
+						}else{
+							while(!(str = bf.readLine()).matches(pat2)){
+								div += str+"\n";
+							}
+						
+						Matcher m = patternmatch(str,pat2);
+						div += m.group(1)+m.group(2);
 						dividefile(div,i);
 						System.out.println(div+"\n");
+						}
 					}else{
 						/*if script tag contains src,this script don't need divide file*/
+						//System.out.println(div);
+						if(str.matches(pat3)){
+							Matcher m = patternmatch(str,pat3);
+							div = m.group(2)+m.group(3)+m.group(4);
+							System.out.println(div);
+						}else{
+							while(!(str = bf.readLine()).matches(pat2)){
+								div += str+"\n";
+							}
+							Matcher m = patternmatch(str,pat2);
+							div += m.group(1)+m.group(2);
+							System.out.println(div);
+						}
 					}
 					break;
 				default:
@@ -93,6 +102,24 @@ public class jscript {
 		}
 		
 		
+	}
+	/**
+	 * 
+	 * @param str 		String which I want to analyze
+	 * @param pattern	analyze pattern
+	 * @return			return Matcher group
+	 * 
+	 * 
+	 */
+	public static Matcher patternmatch(String str,String pattern){
+		
+		Pattern p = Pattern.compile(pattern);
+		Matcher m = p.matcher(str);
+		
+		if(m.find()){
+			return m;
+		}
+		return null;
 	}
 	
 	/*divide file from html(now only Javascript)*/
