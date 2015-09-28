@@ -17,17 +17,20 @@ public class jscript {
 	static char stylefilename = 'a';
 	
 	public static void main(String args[]){
-		inline_init();
-		//System.out.println(args[0]);
-		analyzehtml("test");
-		/*
+		
 		try {
 			copyfile();
 			System.out.println("finish");
+			Thread.sleep(1000);
 		} catch (IOException e) {
 			System.out.println(e);
+		} catch (InterruptedException e){
+			System.out.println(e);
 		}
-		*/
+		
+		inline_init();
+		//System.out.println(args[0]);
+		analyzehtml("test");
 
 	}
 	public static void inline_init(){
@@ -41,15 +44,17 @@ public class jscript {
 	/*catch program css, script or anything else which CSP applying*/
 	public static void analyzehtml(String filename){
 		try{
-			File file = new File("./csp/test.html");
+			File file = new File("./test/test.html");
 			FileReader filereader = new FileReader(file);
 			BufferedReader bf = new BufferedReader(filereader);
+			File wfile = new File("./csp/test.html");
+			FileWriter fw = new FileWriter(wfile);
 			/*flag is which part is the match word,script,eval or style*/
 			int i;
 			String str,pat1,pat2="",pat3="";
 			String div="";
 			while((str = bf.readLine()) != null){
-			
+				System.out.println(str);
 				/*find tag*/
 				for(i =0;i < removetag.size();i++){
 					div ="";
@@ -71,7 +76,9 @@ public class jscript {
 						if(str.matches(pat3)){
 							Matcher m = patternmatch(str,pat3);
 							div = m.group(3);
-							System.out.println(div);
+							String mdhtml = dividescript(div,i);
+							//System.out.println(div);
+							fw.write(mdhtml);
 						}else{
 							while(!(str = bf.readLine()).matches(pat2)){
 								div += str+"\n";
@@ -79,8 +86,9 @@ public class jscript {
 						
 						Matcher m = patternmatch(str,pat2);
 						div += m.group(1);//+m.group(2);
-						dividescript(div,i);
-						System.out.println(div+"\n");
+						String mdhtml = dividescript(div,i);
+						fw.write(mdhtml+"\n");
+						//System.out.println(div+"\n");
 						}
 					}else{
 						/*if script tag contains src,this script don't need divide file*/
@@ -88,38 +96,45 @@ public class jscript {
 						if(str.matches(pat3)){
 							Matcher m = patternmatch(str,pat3);
 							div = m.group(2)+m.group(3)+m.group(4);
-							System.out.println(div);
+							//System.out.println(div);
+							fw.write(div);
 						}else{
 							while(!(str = bf.readLine()).matches(pat2)){
 								div += str+"\n";
 							}
 							Matcher m = patternmatch(str,pat2);
 							div += m.group(1);//+m.group(2);
-							System.out.println(div);
+							//System.out.println(div);
+							fw.write(div);
 						}
 					}
 					break;
+				//write css file
 				case 1:
 					if(str.matches(pat3)){
 						Matcher m = patternmatch(str,pat3);
 						div = m.group(3);
-						System.out.println(div);
+						//System.out.println(div);
+						fw.write(div);
 					}else{
 						while(!(str = bf.readLine()).matches(pat2)){
 							div += str+"\n";
 						}
 						Matcher m = patternmatch(str,pat2);
 						div += m.group(1)+m.group(2);
-						dividestyle(div);
-						System.out.println(div+"\n");
+						String mdhtml = dividestyle(div);
+						fw.write(mdhtml+"\n");
+						//System.out.println(div+"\n");
 					}
 					break;
 				default:
-					System.out.println(str);
+					//System.out.println(str);
+					fw.write(str+"\n");
 					break;
 				}
 			}
 			filereader.close();
+			fw.close();
 		}catch(FileNotFoundException e){
 			System.out.println(e);
 		}catch(IOException e){
@@ -148,16 +163,17 @@ public class jscript {
 	}
 	
 	/*divide file from html(now only Javascript)*/
-	public static void dividescript(String text,int type){
+	public static String dividescript(String text,int type){
 		//System.out.println(text);
 		/*write file*/
+		String mdhtml="";
 		try{
 			File file = new File("./csp/"+jsfilename+fileextension.get(type));
 			FileWriter fw = new FileWriter(file);
 			fw.write(text);
 			
 			fw.close();
-			System.out.println("<"+removetag.get(type)+" src=\""+jsfilename+fileextension.get(type)+"\"></"+removetag.get(type)+">\n");
+			mdhtml = "<"+removetag.get(type)+" src=\""+jsfilename+fileextension.get(type)+"\"></"+removetag.get(type)+">\n";
 			jsfilename++;
 		}catch(IOException e){
 			System.out.println(e);
@@ -166,20 +182,35 @@ public class jscript {
 		
 		/*instead of divide, write like <script src="~~" ></script> text*/
 		
-		
+		return mdhtml;
 	}
 	
-	public static void dividestyle(String text){
-		
-		System.out.println("<link href=\""+stylefilename+".css\" rel=\"stylesheet\" type=\"text/css\">");
-		stylefilename++;
+	public static String dividestyle(String text){
+		String mdhtml = "";
+		try{
+			File file = new File("./csp/"+stylefilename+".css");
+			FileWriter fw = new FileWriter(file);
+			fw.write(text);
+			fw.close();
+			mdhtml = "<link href=\""+stylefilename+".css\" rel=\"stylesheet\" type=\"text/css\">";
+			stylefilename++;
+		}catch(IOException e){
+			System.out.println(e);
+		}
+		return mdhtml;
 	}
 	
 	
 	public static void copyfile() throws IOException{
-		String[] command = {"/bin/sh", "-c","cp -r ./test/ ./csp"};
+		String[] command = {"/bin/sh", "-c","cp -r ./test/* ./csp"};
+		Runtime.getRuntime().exec("mkdir csp");
 		Runtime.getRuntime().exec(command);
 		System.out.println("cp command");
+	}
+	
+	public static void reset() throws IOException{
+		Runtime.getRuntime().exec("rm -rf csp");
+		System.out.println("reset");
 	}
 	
 }
