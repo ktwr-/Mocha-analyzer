@@ -1,6 +1,6 @@
 /*イベントリスナのセット関数オブジェクト*/
 var addListener = function(elm, type, func){
-	if (! elm){ return false; }
+	if (!elm){ return false; }
 	if(elm.addEventListener) {
 		elm.addEventListener(type, func, false);
 	}else if(elm.attachEvent) { 
@@ -11,8 +11,8 @@ var addListener = function(elm, type, func){
 	return true;
 };
 
-vat init = function() {
-	var div = document.getElemetByID('box');
+var init = function() {
+	var div = document.getElementById('box');
 	var popup = function () { alert("clicked!"); };
 	addListener(div,"click",popup);
 };
