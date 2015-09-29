@@ -1,4 +1,5 @@
 /*イベントリスナのセット関数オブジェクト*/
+/*
 var addListener = function(elm, type, func){
 	if (!elm){ return false; }
 	if(elm.addEventListener) {
@@ -18,3 +19,13 @@ var init = function() {
 };
 
 addListener(window,"load",init);
+*/
+
+var init = function() {
+	var div = document.getElementById('box');
+	var popup = function () { alert("clicked!"); };
+	div.addEventListener("click",popup,false);
+};
+
+window.addEventListener("load",init,false);
+
