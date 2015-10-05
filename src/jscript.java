@@ -5,6 +5,7 @@ import java.io.FileWriter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -13,8 +14,12 @@ public class jscript {
 	
 	static ArrayList<String> removetag = new ArrayList<String>();
 	static ArrayList<String> fileextension = new ArrayList<String>();
+	static HashMap<String,String> eventhandler = new HashMap<String,String>();
+	static ArrayList<String> header;
+	static ArrayList<String> body;
 	static char jsfilename = 'a';
 	static char stylefilename = 'a';
+	static char evntid = 'a';
 	
 	public static void main(String args[]){
 		
@@ -30,7 +35,7 @@ public class jscript {
 		
 		inline_init();
 		//System.out.println(args[0]);
-		analyzehtml("test");
+		analyzehtml("./test/test.html");
 
 	}
 	public static void inline_init(){
@@ -38,19 +43,38 @@ public class jscript {
 		removetag.add("style");
 		fileextension.add(".js");
 		fileextension.add(".css");
+		//correspondence table of event handler
+		eventhandler.put("onclick", "click");
+		eventhandler.put("ondblclick", "dblclick");
+		eventhandler.put("onload", "load");
+	}
+	
+	public static void eventhandler(){
+		File file = new File("./test/test.html");
+		try {
+			FileReader filereader = new FileReader(file);
+			BufferedReader bf = new BufferedReader(filereader);
+			
+		} catch (FileNotFoundException e) {
+			System.out.println(e);
+		}
+		
 		
 	}
 	
+	
 	/*catch program css, script or anything else which CSP applying*/
 	public static void analyzehtml(String filename){
+		header = new ArrayList<String>();
+		body = new ArrayList<String>();
 		try{
-			File file = new File("./test/test.html");
+			File file = new File(filename);
 			FileReader filereader = new FileReader(file);
 			BufferedReader bf = new BufferedReader(filereader);
 			File wfile = new File("./csp/test.html");
 			FileWriter fw = new FileWriter(wfile);
 			/*flag is which part is the match word,script,eval or style*/
-			int i;
+			int i,flag=0;
 			String str,pat1,pat2="",pat3="";
 			String div="";
 			while((str = bf.readLine()) != null){
@@ -68,7 +92,9 @@ public class jscript {
 						break;
 					}
 				}
-				
+			if(str.matches("</head>")){
+				flag = 1;
+			}
 				/*write htmlfile for script*/
 				switch(i){
 				case 0:
@@ -78,7 +104,12 @@ public class jscript {
 							div = m.group(3);
 							String mdhtml = dividescript(div,i);
 							//System.out.println(div);
-							fw.write(mdhtml);
+							//fw.write(mdhtml);
+						if(flag == 1){
+							body.add(mdhtml);
+						}else{
+							header.add(mdhtml);
+						}
 						}else{
 							while(!(str = bf.readLine()).matches(pat2)){
 								div += str+"\n";
@@ -87,7 +118,12 @@ public class jscript {
 						Matcher m = patternmatch(str,pat2);
 						div += m.group(1);//+m.group(2);
 						String mdhtml = dividescript(div,i);
-						fw.write(mdhtml+"\n");
+						//fw.write(mdhtml+"\n");
+						if(flag == 1){
+							body.add(mdhtml);
+						}else{
+							header.add(mdhtml);
+						}
 						//System.out.println(div+"\n");
 						}
 					}else{
@@ -97,7 +133,12 @@ public class jscript {
 							Matcher m = patternmatch(str,pat3);
 							div = m.group(2)+m.group(3)+m.group(4);
 							//System.out.println(div);
-							fw.write(div);
+							//fw.write(div);
+						if(flag == 1){
+							body.add(div);
+						}else{
+							header.add(div);
+						}
 						}else{
 							while(!(str = bf.readLine()).matches(pat2)){
 								div += str+"\n";
@@ -105,7 +146,12 @@ public class jscript {
 							Matcher m = patternmatch(str,pat2);
 							div += m.group(1);//+m.group(2);
 							//System.out.println(div);
-							fw.write(div);
+							//fw.write(div);
+						if(flag == 1){
+							body.add(div);
+						}else{
+							header.add(div);
+						}
 						}
 					}
 					break;
@@ -115,7 +161,12 @@ public class jscript {
 						Matcher m = patternmatch(str,pat3);
 						div = m.group(3);
 						//System.out.println(div);
-						fw.write(div);
+						//fw.write(div);
+						if(flag == 1){
+							body.add(div);
+						}else{
+							header.add(div);
+						}
 					}else{
 						while(!(str = bf.readLine()).matches(pat2)){
 							div += str+"\n";
@@ -123,18 +174,34 @@ public class jscript {
 						Matcher m = patternmatch(str,pat2);
 						div += m.group(1)+m.group(2);
 						String mdhtml = dividestyle(div);
-						fw.write(mdhtml+"\n");
+						if(flag == 1){
+							body.add(mdhtml);
+						}else{
+							header.add(mdhtml);
+						}
+						//fw.write(mdhtml+"\n");
 						//System.out.println(div+"\n");
 					}
 					break;
 				default:
 					//System.out.println(str);
-					fw.write(str+"\n");
+					if(!str.matches("</head>")){
+						//fw.write(str+"\n");
+						if(flag == 1){
+							body.add(str);
+						}else{
+							header.add(str);
+						}
+						
+					}
 					break;
 				}
 			}
+			writeheader(fw);
+			writebody(fw);
 			filereader.close();
 			fw.close();
+			testwrite();
 		}catch(FileNotFoundException e){
 			System.out.println(e);
 		}catch(IOException e){
@@ -142,6 +209,35 @@ public class jscript {
 		}
 		
 		
+	}
+	public static void testwrite(){
+		for(int i= 0;i < header.size();i++){
+			System.out.println(header.get(i));
+		}
+		System.out.println("</head>");
+		for(int i=0;i< body.size();i++){
+			System.out.println(body.get(i));
+		}
+	}
+	public static void writeheader(FileWriter fw){
+		try{
+			for(int i=0;i < header.size();i++){
+				fw.write(header.get(i)+"\n");
+			}
+			fw.write("</head>\n");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public static void writebody(FileWriter fw){
+		try{
+			for(int i=0;i < body.size();i++){
+				fw.write(body.get(i)+"\n");
+			}
+		}catch (IOException e){
+			System.out.println(e);
+		}
 	}
 	/**
 	 * 
