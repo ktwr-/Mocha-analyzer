@@ -6,23 +6,25 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class jscript {
 	
 	static ArrayList<String> removetag = new ArrayList<String>();
 	static ArrayList<String> fileextension = new ArrayList<String>();
 	static HashMap<String,String> eventhandler = new HashMap<String,String>();
+	static HashMap<String,String> eventbody = new HashMap<String,String>();
 	static ArrayList<String> header;
 	static ArrayList<String> body;
 	static char jsfilename = 'a';
 	static char stylefilename = 'a';
-	static char evntid = 'a';
+	static char eventid = 'a';
+	static char eventname= 'a';
 	
 	public static void main(String args[]){
-		
+		jscript js = new jscript();
 		try {
 			copyfile();
 			System.out.println("finish");
@@ -33,12 +35,14 @@ public class jscript {
 			System.out.println(e);
 		}
 		
-		inline_init();
+		js.inline_init();
 		//System.out.println(args[0]);
-		analyzehtml("./test/test.html");
+		js.eventhandler();
+		js.analyzehtml("./test/test.html");
 
 	}
-	public static void inline_init(){
+	
+	public void inline_init(){
 		removetag.add("script");
 		removetag.add("style");
 		fileextension.add(".js");
@@ -46,17 +50,75 @@ public class jscript {
 		//correspondence table of event handler
 		eventhandler.put("onclick", "click");
 		eventhandler.put("ondblclick", "dblclick");
-		eventhandler.put("onload", "load");
+		eventbody.put("onload", "load");
 	}
 	
-	public static void eventhandler(){
+	
+	
+	
+	public void eventhandler(){
 		File file = new File("./test/test.html");
 		try {
 			FileReader filereader = new FileReader(file);
 			BufferedReader bf = new BufferedReader(filereader);
+			//find <> tag and extract content in <> tag 
+			String str,tmp="";
+			while((str = bf.readLine()) != null){
+				if(str.contains("<")){
+					String pat = "(.*)<(.*)>(.*)";
+					while(!str.contains(">")){
+						str += bf.readLine();
+					}
+					// str contains ">" 
+					Matcher m = patternmatch(str,pat);
+					tmp = m.group(2);
+					
+				}
+				//if tmp contains event handler which type is onclick 
+				for(Iterator<String> it = eventhandler.keySet().iterator(); it.hasNext();){
+					String key = it.next();
+					if(tmp.contains(eventhandler.get(key))){
+						String pat = "(.*)"+eventhandler.get(key)+"\"(.*)\"(.*)";
+						String id = "(.*)id=\"(.*)\"";
+						if(tmp.matches(pat)){
+							Matcher m = patternmatch(tmp,pat);
+							String script = m.group(2);
+							String wscr="";
+							if(tmp.matches(id)){
+								Matcher mid = patternmatch(tmp, id);
+								String sid = mid.group(2);
+								wscr = tempevent(sid,script,key);
+							}else{
+								wscr = tempevent(String.valueOf(eventid),script,key);
+								eventid++;
+							}
+							System.out.println(wscr);
+						}
+						
+						
+					}
+				}
+				//if tmp contains event handler which type is onload
+				for(Iterator<String> it = eventbody.keySet().iterator(); it.hasNext();){
+					String key = it.next();
+					if(tmp.contains("body") && tmp.contains(eventbody.get(key))){
+						String pat="(.*)"+eventbody.get(key)+"\"(.*)\"(.*)";
+						String wscr ="";
+						if(tmp.matches(pat)){
+							Matcher m = patternmatch(tmp,pat);
+							String script = m.group(2);
+							wscr = loadevent(script,key);
+						}
+						System.out.println(wscr);
+					}
+				}
+			}
+			bf.close();
 			
 		} catch (FileNotFoundException e) {
 			System.out.println(e);
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 		
 		
@@ -64,7 +126,7 @@ public class jscript {
 	
 	
 	/*catch program css, script or anything else which CSP applying*/
-	public static void analyzehtml(String filename){
+	public void analyzehtml(String filename){
 		header = new ArrayList<String>();
 		body = new ArrayList<String>();
 		try{
@@ -78,7 +140,6 @@ public class jscript {
 			String str,pat1,pat2="",pat3="";
 			String div="";
 			while((str = bf.readLine()) != null){
-				System.out.println(str);
 				/*find tag*/
 				for(i =0;i < removetag.size();i++){
 					div ="";
@@ -103,13 +164,11 @@ public class jscript {
 							Matcher m = patternmatch(str,pat3);
 							div = m.group(3);
 							String mdhtml = dividescript(div,i);
-							//System.out.println(div);
-							//fw.write(mdhtml);
-						if(flag == 1){
-							body.add(mdhtml);
-						}else{
-							header.add(mdhtml);
-						}
+							if(flag == 1){
+								body.add(mdhtml);
+							}else{
+								header.add(mdhtml);
+							}
 						}else{
 							while(!(str = bf.readLine()).matches(pat2)){
 								div += str+"\n";
@@ -118,40 +177,33 @@ public class jscript {
 						Matcher m = patternmatch(str,pat2);
 						div += m.group(1);//+m.group(2);
 						String mdhtml = dividescript(div,i);
-						//fw.write(mdhtml+"\n");
-						if(flag == 1){
-							body.add(mdhtml);
-						}else{
-							header.add(mdhtml);
-						}
-						//System.out.println(div+"\n");
+							if(flag == 1){
+								body.add(mdhtml);
+							}else{
+								header.add(mdhtml);
+							}
 						}
 					}else{
 						/*if script tag contains src,this script don't need divide file*/
-						//System.out.println(div);
 						if(str.matches(pat3)){
 							Matcher m = patternmatch(str,pat3);
 							div = m.group(2)+m.group(3)+m.group(4);
-							//System.out.println(div);
-							//fw.write(div);
-						if(flag == 1){
-							body.add(div);
-						}else{
-							header.add(div);
-						}
+							if(flag == 1){
+								body.add(div);
+							}else{
+								header.add(div);
+							}
 						}else{
 							while(!(str = bf.readLine()).matches(pat2)){
 								div += str+"\n";
 							}
 							Matcher m = patternmatch(str,pat2);
 							div += m.group(1);//+m.group(2);
-							//System.out.println(div);
-							//fw.write(div);
-						if(flag == 1){
-							body.add(div);
-						}else{
-							header.add(div);
-						}
+							if(flag == 1){
+								body.add(div);
+							}else{
+								header.add(div);
+							}
 						}
 					}
 					break;
@@ -160,8 +212,6 @@ public class jscript {
 					if(str.matches(pat3)){
 						Matcher m = patternmatch(str,pat3);
 						div = m.group(3);
-						//System.out.println(div);
-						//fw.write(div);
 						if(flag == 1){
 							body.add(div);
 						}else{
@@ -179,14 +229,10 @@ public class jscript {
 						}else{
 							header.add(mdhtml);
 						}
-						//fw.write(mdhtml+"\n");
-						//System.out.println(div+"\n");
 					}
 					break;
 				default:
-					//System.out.println(str);
 					if(!str.matches("</head>")){
-						//fw.write(str+"\n");
 						if(flag == 1){
 							body.add(str);
 						}else{
@@ -201,7 +247,6 @@ public class jscript {
 			writebody(fw);
 			filereader.close();
 			fw.close();
-			testwrite();
 		}catch(FileNotFoundException e){
 			System.out.println(e);
 		}catch(IOException e){
@@ -210,15 +255,11 @@ public class jscript {
 		
 		
 	}
-	public static void testwrite(){
-		for(int i= 0;i < header.size();i++){
-			System.out.println(header.get(i));
-		}
-		System.out.println("</head>");
-		for(int i=0;i< body.size();i++){
-			System.out.println(body.get(i));
-		}
-	}
+	/**
+	 * write <html><head> ~ </head> part
+	 * 
+	 * @param fw writefile
+	 */
 	public static void writeheader(FileWriter fw){
 		try{
 			for(int i=0;i < header.size();i++){
@@ -229,7 +270,10 @@ public class jscript {
 			e.printStackTrace();
 		}
 	}
-	
+	/**
+	 * write after </head> part
+	 * @param fw
+	 */
 	public static void writebody(FileWriter fw){
 		try{
 			for(int i=0;i < body.size();i++){
@@ -295,7 +339,23 @@ public class jscript {
 		}
 		return mdhtml;
 	}
+	public static String tempevent(String id,String script,String key){
+		String templete = "var "+id+" = function() {"
+				+ " var div = document.getElementById("+id+");"
+				+ "	var popup = function () { "
+				+ script +" };div.addEventListener("+eventhandler.get(key)+",popup,false); };"
+				+ "window.addEventListener(\"load\","+eventname+",false);";
+		eventname++;
+		
+		return templete;
+	}
 	
+	public static String loadevent(String script,String key){
+		String templete ="var "+eventname+" = function(){ "+script+"};"
+				+ "window.addEventListener(\"load\","+eventname+",false);";
+		eventname++;
+		return templete;
+	}
 	
 	public static void copyfile() throws IOException{
 		String[] command = {"/bin/sh", "-c","cp -r ./test/* ./csp"};
