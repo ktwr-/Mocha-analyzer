@@ -8,7 +8,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.regex.Pattern;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+import org.mozilla.javascript.*;
+
 import java.util.regex.Matcher;
+
+
 
 public class jscript {
 	
@@ -16,6 +26,8 @@ public class jscript {
 	static ArrayList<String> fileextension = new ArrayList<String>();
 	static HashMap<String,String> eventhandler = new HashMap<String,String>();
 	static HashMap<String,String> eventbody = new HashMap<String,String>();
+	static ArrayList<String> htmlfile = new ArrayList<String>();
+	static ArrayList<String> jsfile = new ArrayList<String>();
 	static ArrayList<String> header;
 	static ArrayList<String> body;
 	static char jsfilename = 'a';
@@ -23,23 +35,36 @@ public class jscript {
 	static char eventid = 'a';
 	static char eventname= 'a';
 	
-	public static void main(String args[]){
+	public static void main(String args[]) throws IOException{
 		jscript js = new jscript();
+		
 		try {
 			copyfile();
 			System.out.println("finish");
 			Thread.sleep(1000);
+			js.getfilename("./csp");
 		} catch (IOException e) {
 			System.out.println(e);
 		} catch (InterruptedException e){
 			System.out.println(e);
 		}
 		
+		for(int i=0;i<htmlfile.size();i++){
+			System.out.println(htmlfile.get(i));
+		}
+		for(int i=0;i<jsfile.size();i++){
+			System.out.println(jsfile.get(i));
+		}
+		
 		js.inline_init();
 		//System.out.println(args[0]);
-		js.eventhandler();
-		js.analyzehtml("./test/test.html");
-
+		//js.eventhandler();
+		//js.analyzehtml("./test/test.html");
+		js.htmlanalyze("./csp/test.html");
+		System.out.println("sample");
+		js.jsanalyze("./test/chtest/a.js");
+		//Document document = Jsoup.parse(new File("./test/test.html"),"UTF-8");
+		//System.out.println(document.getElementsByAttribute("unload"));
 	}
 	
 	public void inline_init(){
@@ -64,22 +89,25 @@ public class jscript {
 			//find <> tag and extract content in <> tag 
 			String str,tmp="";
 			while((str = bf.readLine()) != null){
+				
 				if(str.contains("<")){
-					String pat = "(.*)<(.*)>(.*)";
-					while(!str.contains(">")){
+					String pat = "(.*?)(<.*?>)(.*)";
+					//String pat="(.*<.*>.*){0,}";
+					while(!str.matches(pat)){
 						str += bf.readLine();
 					}
+					System.out.println(str);
 					// str contains ">" 
 					Matcher m = patternmatch(str,pat);
 					tmp = m.group(2);
-					
 				}
+				
 				//if tmp contains event handler which type is onclick 
 				for(Iterator<String> it = eventhandler.keySet().iterator(); it.hasNext();){
 					String key = it.next();
-					if(tmp.contains(eventhandler.get(key))){
-						String pat = "(.*)"+eventhandler.get(key)+"\"(.*)\"(.*)";
-						String id = "(.*)id=\"(.*)\"";
+					if(tmp.contains(key)){
+						String pat = "(.*)"+key+"=\"(.*?)\"(.*)";
+						String id = "(.*)id=\"(.+?)\"(.*)";
 						if(tmp.matches(pat)){
 							Matcher m = patternmatch(tmp,pat);
 							String script = m.group(2);
@@ -102,9 +130,9 @@ public class jscript {
 				for(Iterator<String> it = eventbody.keySet().iterator(); it.hasNext();){
 					String key = it.next();
 					if(tmp.contains("body") && tmp.contains(eventbody.get(key))){
-						String pat="(.*)"+eventbody.get(key)+"\"(.*)\"(.*)";
+						String pat="(.*"+key+"=\")(.*)(\".*)";
 						String wscr ="";
-						if(tmp.matches(pat)){
+						if(tmp.contains(key)){
 							Matcher m = patternmatch(tmp,pat);
 							String script = m.group(2);
 							wscr = loadevent(script,key);
@@ -124,137 +152,99 @@ public class jscript {
 		
 	}
 	
+	/**/
 	
-	/*catch program css, script or anything else which CSP applying*/
-	public void analyzehtml(String filename){
-		header = new ArrayList<String>();
-		body = new ArrayList<String>();
+	public void htmlanalyze(String filename){
 		try{
 			File file = new File(filename);
-			FileReader filereader = new FileReader(file);
-			BufferedReader bf = new BufferedReader(filereader);
-			File wfile = new File("./csp/test.html");
-			FileWriter fw = new FileWriter(wfile);
-			/*flag is which part is the match word,script,eval or style*/
-			int i,flag=0;
-			String str,pat1,pat2="",pat3="";
-			String div="";
-			while((str = bf.readLine()) != null){
-				/*find tag*/
-				for(i =0;i < removetag.size();i++){
-					div ="";
-					/*find script,eval or style tag*/
-					pat1 = "(.*)(<"+removetag.get(i)+".*)";
-					pat2 = "(.*)(</"+removetag.get(i)+">)(.*)";
-					pat3 = "(.*)(<"+removetag.get(i)+".*>)(.*)(</"+removetag.get(i)+">)(.*)";
-					if(str.matches(pat1)){
-						Matcher m = patternmatch(str,pat1);
-						//div=m.group(2)+"\n";
-						break;
-					}
-				}
-			if(str.matches("</head>")){
-				flag = 1;
-			}
-				/*write htmlfile for script*/
-				switch(i){
-				case 0:
-					if(!str.contains("src")){
-						if(str.matches(pat3)){
-							Matcher m = patternmatch(str,pat3);
-							div = m.group(3);
-							String mdhtml = dividescript(div,i);
-							if(flag == 1){
-								body.add(mdhtml);
-							}else{
-								header.add(mdhtml);
-							}
-						}else{
-							while(!(str = bf.readLine()).matches(pat2)){
-								div += str+"\n";
-							}
-						
-						Matcher m = patternmatch(str,pat2);
-						div += m.group(1);//+m.group(2);
-						String mdhtml = dividescript(div,i);
-							if(flag == 1){
-								body.add(mdhtml);
-							}else{
-								header.add(mdhtml);
-							}
-						}
-					}else{
-						/*if script tag contains src,this script don't need divide file*/
-						if(str.matches(pat3)){
-							Matcher m = patternmatch(str,pat3);
-							div = m.group(2)+m.group(3)+m.group(4);
-							if(flag == 1){
-								body.add(div);
-							}else{
-								header.add(div);
-							}
-						}else{
-							while(!(str = bf.readLine()).matches(pat2)){
-								div += str+"\n";
-							}
-							Matcher m = patternmatch(str,pat2);
-							div += m.group(1);//+m.group(2);
-							if(flag == 1){
-								body.add(div);
-							}else{
-								header.add(div);
-							}
-						}
-					}
-					break;
-				//write css file
-				case 1:
-					if(str.matches(pat3)){
-						Matcher m = patternmatch(str,pat3);
-						div = m.group(3);
-						if(flag == 1){
-							body.add(div);
-						}else{
-							header.add(div);
-						}
-					}else{
-						while(!(str = bf.readLine()).matches(pat2)){
-							div += str+"\n";
-						}
-						Matcher m = patternmatch(str,pat2);
-						div += m.group(1)+m.group(2);
-						String mdhtml = dividestyle(div);
-						if(flag == 1){
-							body.add(mdhtml);
-						}else{
-							header.add(mdhtml);
-						}
-					}
-					break;
-				default:
-					if(!str.matches("</head>")){
-						if(flag == 1){
-							body.add(str);
-						}else{
-							header.add(str);
-						}
-						
-					}
-					break;
-				}
-			}
-			writeheader(fw);
-			writebody(fw);
-			filereader.close();
-			fw.close();
-		}catch(FileNotFoundException e){
-			System.out.println(e);
+			Document doc = Jsoup.parse(file, "UTF-8");
+			String html = doc.toString();
+			html = dividescript(doc,html);
+			html = dividestyle(doc,html);
+			System.out.println(html);
+			html = divideevent(doc,html);
 		}catch(IOException e){
 			System.out.println(e);
 		}
 		
-		
 	}
+	
+	public void jsanalyze(String filename){
+		try{
+			File file = new File(filename);
+			Document doc = Jsoup.parse(file, "UTF-8");
+			System.out.println(doc.toString());
+		}catch(IOException e){
+			System.out.println(e);
+		}
+	}
+	
+	public String dividescript(Document doc, String html){
+		Elements script = doc.getElementsByTag("script");
+		for(int i=0;i < script.size();i++){
+			Element tmp = script.get(i);
+			System.out.println(tmp.toString()+"\n");
+			if(tmp.toString().contains("src=")){
+				String pat="(.*)<script().*src=(.*)>(.*)";
+			}else{
+				String mdhtml = dividescript(tmp.data());
+				html = html.replaceAll(Pattern.quote(tmp.toString()), mdhtml);
+			}
+		}
+		return html;
+	}
+	
+	public String dividestyle(Document doc,String html){
+		Elements style = doc.getElementsByTag("style");
+		for(int i=0; i< style.size();i++){
+			Element tmp = style.get(i);
+			System.out.println(tmp.toString());
+			if(!tmp.toString().contains("src=")){
+				String mdhtml = dividestyle(tmp.data());
+				html = html.replaceAll(Pattern.quote(tmp.toString()), mdhtml);
+			}
+		}
+		return html;
+	}
+	
+	public String divideevent(Document doc,String html){
+		for(String key : eventhandler.keySet()){
+			Elements evhand = doc.getElementsByAttribute(key);
+			for(int i=0;i<evhand.size();i++){
+				Element tmp = evhand.get(i);
+				System.out.println(tmp.toString());
+				String pat = "(.*)"+key+"=\"(.*?)\"(.*)";
+				Matcher m = patternmatch(tmp.toString(),pat);
+				String script = m.group(2);
+				String template = tempevent(String.valueOf(eventid),script,key);
+				System.out.println(template);
+			}
+		}
+		for(String key : eventbody.keySet()){
+			Elements evbody = doc.getElementsByAttribute(key);
+			for(int i=0;i< evbody.size();i++){
+				Element tmp = evbody.get(i);
+				String pat = "(.*)"+key+"=\"(.*?)\"(.*)";
+				Matcher m = patternmatch(tmp.toString(),pat);
+				String script = m.group(2);
+				String template = loadevent(script,key);
+				System.out.println(template);
+			}
+		}
+		return html;
+	}
+	/**
+	 * modify setTimeout and setInterval if these contents conatins src="remote URI"
+	 * 
+	 * @param doc
+	 * @param js 
+	 * @return
+	 */
+	public String divideSetTI(Document doc,String js){
+		
+		return js;
+	}
+	
 	/**
 	 * write <html><head> ~ </head> part
 	 * 
@@ -264,6 +254,7 @@ public class jscript {
 		try{
 			for(int i=0;i < header.size();i++){
 				fw.write(header.get(i)+"\n");
+				System.out.println(header.get(i)+"\n");
 			}
 			fw.write("</head>\n");
 		} catch (IOException e) {
@@ -278,6 +269,7 @@ public class jscript {
 		try{
 			for(int i=0;i < body.size();i++){
 				fw.write(body.get(i)+"\n");
+				System.out.println(body.get(i)+"\n");
 			}
 		}catch (IOException e){
 			System.out.println(e);
@@ -303,17 +295,17 @@ public class jscript {
 	}
 	
 	/*divide file from html(now only Javascript)*/
-	public static String dividescript(String text,int type){
+	public static String dividescript(String text){
 		//System.out.println(text);
 		/*write file*/
 		String mdhtml="";
 		try{
-			File file = new File("./csp/"+jsfilename+fileextension.get(type));
+			File file = new File("./csp/"+jsfilename+".js");
 			FileWriter fw = new FileWriter(file);
 			fw.write(text);
 			
 			fw.close();
-			mdhtml = "<"+removetag.get(type)+" src=\""+jsfilename+fileextension.get(type)+"\"></"+removetag.get(type)+">\n";
+			mdhtml = "<script src=\""+jsfilename+".js\"></script>\n";
 			jsfilename++;
 		}catch(IOException e){
 			System.out.println(e);
@@ -340,19 +332,35 @@ public class jscript {
 		return mdhtml;
 	}
 	public static String tempevent(String id,String script,String key){
-		String templete = "var "+id+" = function() {"
-				+ " var div = document.getElementById("+id+");"
-				+ "	var popup = function () { "
-				+ script +" };div.addEventListener("+eventhandler.get(key)+",popup,false); };"
-				+ "window.addEventListener(\"load\","+eventname+",false);";
+		String templete = "var "+eventname+" = function() {\n"
+				+ " var div = document.getElementById(\""+id+"\");\n"
+				+ "	var popup = function () { \n"
+				+ script +"; };\n div.addEventListener("+eventhandler.get(key)+",popup,false); };\n"
+				+ "window.addEventListener(\"load\","+eventname+",false);\n";
 		eventname++;
 		
 		return templete;
 	}
 	
+	public void getfilename(String directory) throws IOException{
+		File file = new File(directory);
+		File files[] = file.listFiles();
+		for(int i=0;i<files.length;i++){
+			if(files[i].isFile()){
+				if(files[i].getName().contains(".html")){
+					htmlfile.add(files[i].toString());
+				}else if(files[i].getName().contains(".js")){
+					jsfile.add(files[i].toString());
+				}
+			}else if(files[i].isDirectory()){
+				getfilename(files[i].toString());
+			}
+		}
+	}
+	
 	public static String loadevent(String script,String key){
-		String templete ="var "+eventname+" = function(){ "+script+"};"
-				+ "window.addEventListener(\"load\","+eventname+",false);";
+		String templete ="var "+eventname+" = function(){ \n"+script+";\n};\n"
+				+ "window.addEventListener(\"load\","+eventname+",false);\n";
 		eventname++;
 		return templete;
 	}
