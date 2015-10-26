@@ -62,7 +62,6 @@ public class jscript {
 		//js.analyzehtml("./test/test.html");
 		js.htmlanalyze("./csp/test.html");
 		System.out.println("sample");
-		js.jsanalyze("./test/chtest/a.js");
 		//Document document = Jsoup.parse(new File("./test/test.html"),"UTF-8");
 		//System.out.println(document.getElementsByAttribute("unload"));
 	}
