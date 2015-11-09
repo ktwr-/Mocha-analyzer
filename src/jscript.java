@@ -57,99 +57,25 @@ public class jscript {
 		}
 		
 		js.inline_init();
-		//System.out.println(args[0]);
-		//js.eventhandler();
 		//js.analyzehtml("./test/test.html");
 		js.htmlanalyze("./csp/test.html");
-		System.out.println("sample");
-		//Document document = Jsoup.parse(new File("./test/test.html"),"UTF-8");
-		//System.out.println(document.getElementsByAttribute("unload"));
+		//System.out.println("sample");
 	}
 	
 	public void inline_init(){
-		removetag.add("script");
-		removetag.add("style");
-		fileextension.add(".js");
-		fileextension.add(".css");
 		//correspondence table of event handler
 		eventhandler.put("onclick", "click");
 		eventhandler.put("ondblclick", "dblclick");
 		eventbody.put("onload", "load");
 	}
-	
-	
-	
-	
-	public void eventhandler(){
-		File file = new File("./test/test.html");
-		try {
-			FileReader filereader = new FileReader(file);
-			BufferedReader bf = new BufferedReader(filereader);
-			//find <> tag and extract content in <> tag 
-			String str,tmp="";
-			while((str = bf.readLine()) != null){
-				
-				if(str.contains("<")){
-					String pat = "(.*?)(<.*?>)(.*)";
-					//String pat="(.*<.*>.*){0,}";
-					while(!str.matches(pat)){
-						str += bf.readLine();
-					}
-					System.out.println(str);
-					// str contains ">" 
-					Matcher m = patternmatch(str,pat);
-					tmp = m.group(2);
-				}
-				
-				//if tmp contains event handler which type is onclick 
-				for(Iterator<String> it = eventhandler.keySet().iterator(); it.hasNext();){
-					String key = it.next();
-					if(tmp.contains(key)){
-						String pat = "(.*)"+key+"=\"(.*?)\"(.*)";
-						String id = "(.*)id=\"(.+?)\"(.*)";
-						if(tmp.matches(pat)){
-							Matcher m = patternmatch(tmp,pat);
-							String script = m.group(2);
-							String wscr="";
-							if(tmp.matches(id)){
-								Matcher mid = patternmatch(tmp, id);
-								String sid = mid.group(2);
-								wscr = tempevent(sid,script,key);
-							}else{
-								wscr = tempevent(String.valueOf(eventid),script,key);
-								eventid++;
-							}
-							System.out.println(wscr);
-						}
-						
-						
-					}
-				}
-				//if tmp contains event handler which type is onload
-				for(Iterator<String> it = eventbody.keySet().iterator(); it.hasNext();){
-					String key = it.next();
-					if(tmp.contains("body") && tmp.contains(eventbody.get(key))){
-						String pat="(.*"+key+"=\")(.*)(\".*)";
-						String wscr ="";
-						if(tmp.contains(key)){
-							Matcher m = patternmatch(tmp,pat);
-							String script = m.group(2);
-							wscr = loadevent(script,key);
-						}
-						System.out.println(wscr);
-					}
-				}
-			}
-			bf.close();
-			
-		} catch (FileNotFoundException e) {
-			System.out.println(e);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		
+	public Document insertCSP(Document doc){
+		Elements header = doc.getElementsByTag("head");
+		header.append("<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *; script-src 'self'; object-src 'self'; style-src 'self';\">");
+		return doc;
 	}
+	
+	
+	
 	
 	/**/
 	
@@ -157,11 +83,19 @@ public class jscript {
 		try{
 			File file = new File(filename);
 			Document doc = Jsoup.parse(file, "UTF-8");
+			doc = insertCSP(doc);
 			String html = doc.toString();
 			html = dividescript(doc,html);
+			doc = Jsoup.parse(html);
 			html = dividestyle(doc,html);
-			System.out.println(html);
+			doc = Jsoup.parse(html);
+			html = dividehref(doc,html);
+			doc = Jsoup.parse(html);
 			html = divideevent(doc,html);
+			FileWriter fw = new FileWriter(file);
+			System.out.println(html);
+			fw.write(html);
+			fw.close();
 		}catch(IOException e){
 			System.out.println(e);
 		}
@@ -182,7 +116,6 @@ public class jscript {
 		Elements script = doc.getElementsByTag("script");
 		for(int i=0;i < script.size();i++){
 			Element tmp = script.get(i);
-			System.out.println(tmp.toString()+"\n");
 			if(tmp.toString().contains("src=")){
 				String pat="(.*)<script().*src=(.*)>(.*)";
 			}else{
@@ -197,7 +130,7 @@ public class jscript {
 		Elements style = doc.getElementsByTag("style");
 		for(int i=0; i< style.size();i++){
 			Element tmp = style.get(i);
-			System.out.println(tmp.toString());
+			//System.out.println(tmp.toString());
 			if(!tmp.toString().contains("src=")){
 				String mdhtml = dividestyle(tmp.data());
 				html = html.replaceAll(Pattern.quote(tmp.toString()), mdhtml);
@@ -206,31 +139,91 @@ public class jscript {
 		return html;
 	}
 	
-	public String divideevent(Document doc,String html){
-		for(String key : eventhandler.keySet()){
-			Elements evhand = doc.getElementsByAttribute(key);
-			for(int i=0;i<evhand.size();i++){
-				Element tmp = evhand.get(i);
-				System.out.println(tmp.toString());
-				String pat = "(.*)"+key+"=\"(.*?)\"(.*)";
-				Matcher m = patternmatch(tmp.toString(),pat);
-				String script = m.group(2);
-				String template = tempevent(String.valueOf(eventid),script,key);
-				System.out.println(template);
+	public String dividehref(Document doc,String html){
+		File file= new File("./csp/event.js");
+		try{
+			FileWriter fw = new FileWriter(file);
+			Elements atag = doc.getElementsByTag("a");
+			for(int i=0;i < atag.size();i++){
+				Element tmp = atag.get(i);
+				if(tmp.toString().contains("href=\"javascript")){
+					String pat="(.*)\"javascript:(.*?)\"(.*)";
+					Matcher m = patternmatch(tmp.toString(),pat);
+					if(m != null){
+						System.out.println(m.group(2));
+						if(m.group(2).equals("void(0)")){
+							html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+"\"\""+m.group(3));
+						}else{
+							System.out.println(m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
+							html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
+							//System.out.println("test print\n");
+						}
+					}
+						
+				}
 			}
-		}
-		for(String key : eventbody.keySet()){
-			Elements evbody = doc.getElementsByAttribute(key);
-			for(int i=0;i< evbody.size();i++){
-				Element tmp = evbody.get(i);
-				String pat = "(.*)"+key+"=\"(.*?)\"(.*)";
-				Matcher m = patternmatch(tmp.toString(),pat);
-				String script = m.group(2);
-				String template = loadevent(script,key);
-				System.out.println(template);
-			}
+		}catch(IOException e){
+			System.out.println(e);
 		}
 		return html;
+	}
+	
+	public String divideevent(Document doc,String html){
+		File file = new File("./csp/event.js");
+		int flag=0;
+		try{
+			FileWriter fw = new FileWriter(file);	
+			for(String key : eventhandler.keySet()){
+				Elements evhand = doc.getElementsByAttribute(key);
+				for(int i=0;i<evhand.size();i++){
+					String evid="";
+					Element tmp = evhand.get(i);
+					//System.out.println(tmp.toString());
+					String pat = "(.*)"+key+"=\"(.*?)\"(.*)";
+					String patid = "(.*)id=\"(.*?)\"(.*)";
+					Matcher m = patternmatch(tmp.toString(),pat);
+					String script = m.group(2);
+					Matcher mid = patternmatch(tmp.toString(),patid);
+					if(mid == null){
+						evid = String.valueOf(eventid);
+						html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+"id=\""+eventid+"\""+m.group(3));
+						eventid++;
+					}else{
+						evid = mid.group(2);
+						html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+m.group(3));
+					}
+					
+					String template = tempevent(evid,script,key);
+					//System.out.println(template);
+					fw.write(template);
+					flag = 1;
+				}
+			}
+			for(String key : eventbody.keySet()){
+				Elements evbody = doc.getElementsByAttribute(key);
+				for(int i=0;i< evbody.size();i++){
+					Element tmp = evbody.get(i);
+					String pat = "(.*)"+key+"=\"(.*?)\"(.*)";
+					Matcher m = patternmatch(tmp.toString(),pat);
+					String script = m.group(2);
+					String template = loadevent(script,key);
+					html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+m.group(3));
+					//System.out.println(template);
+					fw.write(template);
+					flag = 1;
+				}
+			}
+			fw.close();
+		}catch(IOException e){
+			System.out.println(e);
+		}
+		doc = Jsoup.parse(html);
+		if(flag == 1){
+			Elements head = doc.getElementsByTag("head");
+			head.append("\n<script src=\"event.js\"></script>");
+			//System.out.println(head.toString());
+		}
+		return doc.toString();
 	}
 	/**
 	 * modify setTimeout and setInterval if these contents conatins src="remote URI"
@@ -334,7 +327,7 @@ public class jscript {
 		String templete = "var "+eventname+" = function() {\n"
 				+ " var div = document.getElementById(\""+id+"\");\n"
 				+ "	var popup = function () { \n"
-				+ script +"; };\n div.addEventListener("+eventhandler.get(key)+",popup,false); };\n"
+				+ script +"; };\n div.addEventListener(\""+eventhandler.get(key)+"\",popup,false); };\n"
 				+ "window.addEventListener(\"load\","+eventname+",false);\n";
 		eventname++;
 		
