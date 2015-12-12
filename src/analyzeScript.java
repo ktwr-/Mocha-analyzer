@@ -33,6 +33,20 @@ public class analyzeScript {
 		
 	}
 	
+	public void analyzeScript(String filename){
+		String source = fileReader(filename);
+		System.out.println("start createScript");
+		String mdjs = createScript(source);
+		if(!mdjs.equals(source)){
+			overWrite(mdjs,filename);
+		}
+		System.out.println("finish createScript");
+		String mdset = setIntTime(source);
+		if(!mdset.equals(source)){
+			overWrite(mdset,filename);
+		}
+	}
+	
 	public String fileReader(String filename){
 		StringBuilder sb = new StringBuilder("");
 		try{
@@ -48,6 +62,7 @@ public class analyzeScript {
 		}
 		return sb.toString();
 	}
+	
 	public String setIntTime(String source){
 		String temp=source;
 		if(source.contains("setTimeout") || source.contains("setInterval")){

@@ -34,9 +34,11 @@ public class jscript {
 	static char stylefilename = 'a';
 	static char eventid = 'a';
 	static char eventname= 'a';
+	static Boolean baJS = false;
 	
 	public static void main(String args[]) throws IOException{
 		jscript js = new jscript();
+		analyzeScript aS = new analyzeScript();
 		
 		try {
 			copyfile();
@@ -49,17 +51,22 @@ public class jscript {
 			System.out.println(e);
 		}
 		
-		for(int i=0;i<htmlfile.size();i++){
-			System.out.println(htmlfile.get(i));
-		}
-		for(int i=0;i<jsfile.size();i++){
-			System.out.println(jsfile.get(i));
-		}
+		
 		
 		js.inline_init();
-		//js.analyzehtml("./test/test.html");
-		js.htmlanalyze("./csp/test.html");
+		//js.htmlanalyze("./csp/test.html");
+		
+		for(int i=0;i<htmlfile.size();i++){
+			System.out.println(htmlfile.get(i));
+			js.htmlanalyze(htmlfile.get(i));
+		}
 		//System.out.println("sample");
+		for(int i=0;i<jsfile.size();i++){
+			System.out.println(jsfile.get(i));
+			aS.analyzeScript(jsfile.get(i));
+		}
+		
+		
 	}
 	
 	public void inline_init(){
@@ -67,6 +74,8 @@ public class jscript {
 		eventhandler.put("onclick", "click");
 		eventhandler.put("ondblclick", "dblclick");
 		eventbody.put("onload", "load");
+		
+		baJS = false;
 	}
 	public Document insertCSP(Document doc){
 		Elements header = doc.getElementsByTag("head");
@@ -93,7 +102,7 @@ public class jscript {
 			doc = Jsoup.parse(html);
 			html = divideevent(doc,html);
 			FileWriter fw = new FileWriter(file);
-			System.out.println(html);
+			System.out.println(html+"\n");
 			fw.write(html);
 			fw.close();
 		}catch(IOException e){
@@ -151,8 +160,19 @@ public class jscript {
 					Matcher m = patternmatch(tmp.toString(),pat);
 					if(m != null){
 						System.out.println(m.group(2));
-						if(m.group(2).equals("void(0)")){
-							html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+"\"\""+m.group(3));
+						if(m.group(2).contains("void(0)")){
+							baJS = true;
+							/*pattern <a href="javascript:(javascript)void(0)" onclick="(javascript)">test</a>*/
+							if(tmp.toString().contains("onclick")){
+								String onclickpat = "(.*?)onclick=\"(.*?)\"(.*)";
+								String script = m.group(2);
+								Matcher onclickm = patternmatch(m.group(1)+"\"\""+m.group(3),onclickpat);
+								System.out.println(onclickm.group());
+								html = html.replaceAll(Pattern.quote(m.group()), onclickm.group(1)+"onclick=\""+onclickm.group(2)+";"+script+"\""+onclickm.group(3));
+							/*pattern <a href="javascript:(javascript)void(0)></a>*/
+							}else{
+								html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
+							}
 						}else{
 							System.out.println(m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
 							html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
@@ -169,21 +189,36 @@ public class jscript {
 	}
 	
 	public String divideevent(Document doc,String html){
+		
+		System.out.println("\n divide event");
 		File file = new File("./csp/event.js");
 		int flag=0;
 		try{
 			FileWriter fw = new FileWriter(file);	
+			if(baJS){
+				fw.write("function stopDefAction(evt){ evt.preventDefault(); }\n");
+			}
+			
 			for(String key : eventhandler.keySet()){
 				Elements evhand = doc.getElementsByAttribute(key);
 				for(int i=0;i<evhand.size();i++){
 					String evid="";
 					Element tmp = evhand.get(i);
+					Boolean preventevent = false;
 					//System.out.println(tmp.toString());
 					String pat = "(.*)"+key+"=\"(.*?)\"(.*)";
 					String patid = "(.*)id=\"(.*?)\"(.*)";
 					Matcher m = patternmatch(tmp.toString(),pat);
 					String script = m.group(2);
 					Matcher mid = patternmatch(tmp.toString(),patid);
+					if(m.group(2).contains("void(0)")){
+						preventevent = true;
+						String rmvoid = tmp.toString().replace("void(0)", "");
+						html = html.replaceAll(Pattern.quote(tmp.toString()), rmvoid);
+						m= patternmatch(rmvoid,pat);
+						System.out.println(m.group());
+						script = m.group(2);
+					}
 					if(mid == null){
 						evid = String.valueOf(eventid);
 						html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+"id=\""+eventid+"\""+m.group(3));
@@ -192,8 +227,12 @@ public class jscript {
 						evid = mid.group(2);
 						html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+m.group(3));
 					}
-					
-					String template = tempevent(evid,script,key);
+					String template="";
+					if(preventevent){
+						template = preventvoid(evid,script,key); 
+					}else{
+						template = tempevent(evid,script,key);
+					}
 					//System.out.println(template);
 					fw.write(template);
 					flag = 1;
@@ -324,14 +363,25 @@ public class jscript {
 		return mdhtml;
 	}
 	public static String tempevent(String id,String script,String key){
-		String templete = "var "+eventname+" = function() {\n"
+		String templete = "var ev"+eventname+" = function() {\n"
 				+ " var div = document.getElementById(\""+id+"\");\n"
 				+ "	var popup = function () { \n"
 				+ script +"; };\n div.addEventListener(\""+eventhandler.get(key)+"\",popup,false); };\n"
-				+ "window.addEventListener(\"load\","+eventname+",false);\n";
+				+ "window.addEventListener(\"load\",ev"+eventname+",false);\n";
 		eventname++;
 		
 		return templete;
+	}
+	
+	public String preventvoid(String id,String script,String key){
+		String template ="var ev"+eventname+" = function() {\n"
+				+ " var div = document.getElementById(\""+id+"\");\n"
+				+ "	var popup = function () { \n"
+				+ script +"; };\n div.addEventListener(\""+eventhandler.get(key)+"\",popup,false); "
+						+ "div.addEventListener(\"click\",stopDefAction,false); };\n"
+				+ "window.addEventListener(\"load\",ev"+eventname+",false);\n";
+		eventname++;;
+		return template;
 	}
 	
 	public void getfilename(String directory) throws IOException{
@@ -351,14 +401,14 @@ public class jscript {
 	}
 	
 	public static String loadevent(String script,String key){
-		String templete ="var "+eventname+" = function(){ \n"+script+";\n};\n"
-				+ "window.addEventListener(\"load\","+eventname+",false);\n";
+		String templete ="var ev"+eventname+" = function(){ \n"+script+";\n};\n"
+				+ "window.addEventListener(\"load\",ev"+eventname+",false);\n";
 		eventname++;
 		return templete;
 	}
 	
 	public static void copyfile() throws IOException{
-		String[] command = {"/bin/sh", "-c","cp -r ./test/* ./csp"};
+		String[] command = {"/bin/sh", "-c","cp -r ./gsimaps/* ./csp"};
 		Runtime.getRuntime().exec("mkdir csp");
 		Runtime.getRuntime().exec(command);
 		System.out.println("cp command");
