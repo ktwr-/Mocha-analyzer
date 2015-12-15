@@ -77,6 +77,7 @@ public class jscript {
 		
 		baJS = false;
 	}
+	
 	public Document insertCSP(Document doc){
 		Elements header = doc.getElementsByTag("head");
 		header.append("<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *; script-src 'self'; object-src 'self'; style-src 'self';\">");
@@ -145,6 +146,46 @@ public class jscript {
 				html = html.replaceAll(Pattern.quote(tmp.toString()), mdhtml);
 			}
 		}
+		Elements divstyle = doc.getElementsByAttribute("style=");
+		// modify style attribute
+		String styletext = "";
+		for(int i=0;i < divstyle.size();i++){
+			Element tmp = divstyle.get(i);
+			String stylepat = "(.*?)style=\"(.*?)\"(.*)";
+			String id = String.valueOf(eventid);
+			Matcher stylem = patternmatch(tmp.toString(),stylepat);
+			if(stylem != null){
+				String styleAttr = stylem.group(2);
+				String mdhtml = "";
+				String idpat = "(.*?)id=\"(.*?)\"(.*)";
+				Matcher idm = patternmatch(tmp.toString(),idpat);
+				if(idm !=null){
+					mdhtml = stylem.group(1)+stylem.group(3);
+					id = idm.group(2);
+				}else{
+					mdhtml += "id=\""+eventid+"\"";
+					eventid++;
+				}
+			styletext += textStyleAttr(id,styleAttr);
+			html = html.replaceAll(Pattern.quote(tmp.toString()),mdhtml); 
+			}
+			
+			
+		}
+		if(!styletext.equals("")){
+			try{
+				File file = new File("styleattr.css");
+				FileWriter fw = new FileWriter(file);
+				fw.write(styletext);
+				fw.close();
+			}catch(IOException e){
+				System.out.println(e);
+			}
+			Element header = doc.getElementById("head");
+			header.append("<link href=\"styleattr.css\" rel=\"stylesheet\" type=\"text/css\">");
+		}
+		
+		
 		return html;
 	}
 	
@@ -361,6 +402,10 @@ public class jscript {
 			System.out.println(e);
 		}
 		return mdhtml;
+	}
+	
+	public String textStyleAttr(String id,String style){
+		return "#"+id+" { " +style+" }";
 	}
 	public static String tempevent(String id,String script,String key){
 		String templete = "var ev"+eventname+" = function() {\n"
