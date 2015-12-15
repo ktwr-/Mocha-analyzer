@@ -156,10 +156,12 @@ public class jscript {
 			String id = String.valueOf(eventid);
 			Matcher stylem = patternmatch(tmp.toString(),stylepat);
 			if(stylem != null){
+				String styleline= patternmatch(tmp.toString(),"(.*?)>(.*)").group(1)+">";
+				System.out.println(styleline+"\n");
 				String styleAttr = stylem.group(2);
 				String mdhtml = "";
-				String idpat = "(.*?)id=\"(.*?)\"(.*)";
-				Matcher idm = patternmatch(tmp.toString(),idpat);
+				String idpat = "<(.*?)id=\"(.*?)\"(.*?)>(.*)";
+				Matcher idm = patternmatch(styleline,idpat);
 				if(idm !=null){
 					mdhtml = stylem.group(1)+stylem.group(3);
 					id = idm.group(2);
@@ -167,8 +169,8 @@ public class jscript {
 					mdhtml = stylem.group(1)+"id=\""+eventid+"\""+stylem.group(3)+"\n";
 					eventid++;
 				}
-			styletext += textStyleAttr(id,styleAttr);
-			html = html.replaceAll(Pattern.quote(tmp.toString()),mdhtml); 
+			styletext += textStyleAttr(id,styleAttr)+"\n";
+			html = html.replaceAll(Pattern.quote(styleline),mdhtml); 
 			}
 			
 		doc = Jsoup.parse(html);
