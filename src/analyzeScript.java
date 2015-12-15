@@ -7,8 +7,6 @@ import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.mozilla.javascript.*;
-import org.mozilla.javascript.ast.AstRoot;
 
 public class analyzeScript {
 	

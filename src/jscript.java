@@ -14,7 +14,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import org.mozilla.javascript.*;
 
 import java.util.regex.Matcher;
 
@@ -61,10 +60,10 @@ public class jscript {
 			js.htmlanalyze(htmlfile.get(i));
 		}
 		//System.out.println("sample");
-		for(int i=0;i<jsfile.size();i++){
-			System.out.println(jsfile.get(i));
-			aS.analyzeScript(jsfile.get(i));
-		}
+		//for(int i=0;i<jsfile.size();i++){
+		//	System.out.println(jsfile.get(i));
+		//	aS.analyzeScript(jsfile.get(i));
+		//}
 		
 		
 	}
@@ -91,13 +90,14 @@ public class jscript {
 	
 	public void htmlanalyze(String filename){
 		try{
+			String filepat = "(.*)/(.*)\\.(.*)";
 			File file = new File(filename);
 			Document doc = Jsoup.parse(file, "UTF-8");
 			doc = insertCSP(doc);
 			String html = doc.toString();
 			html = dividescript(doc,html);
 			doc = Jsoup.parse(html);
-			html = dividestyle(doc,html);
+			html = dividestyle(doc,html,patternmatch(filename,filepat).group(2));
 			doc = Jsoup.parse(html);
 			html = dividehref(doc,html);
 			doc = Jsoup.parse(html);
@@ -136,7 +136,7 @@ public class jscript {
 		return html;
 	}
 	
-	public String dividestyle(Document doc,String html){
+	public String dividestyle(Document doc,String html,String filename){
 		Elements style = doc.getElementsByTag("style");
 		for(int i=0; i< style.size();i++){
 			Element tmp = style.get(i);
@@ -171,23 +171,23 @@ public class jscript {
 			html = html.replaceAll(Pattern.quote(tmp.toString()),mdhtml); 
 			}
 			
-			
+		doc = Jsoup.parse(html);
 		}
 		if(!styletext.equals("")){
 			try{
-				File file = new File("./csp/styleattr.css");
+				File file = new File("./csp/"+filename+"styleattr.css");
 				FileWriter fw = new FileWriter(file);
 				fw.write(styletext);
 				fw.close();
 			}catch(IOException e){
 				System.out.println(e);
 			}
-			Element header = doc.getElementById("head");
-			//header.append("<link href=\"styleattr.css\" rel=\"stylesheet\" type=\"text/css\">");
+			Elements header = doc.getElementsByTag("head");
+			header.append("<link href=\""+filename+"styleattr.css\" rel=\"stylesheet\" type=\"text/css\">");
 		}
 		
 		
-		return html;
+		return doc.toString();
 	}
 	
 	public String dividehref(Document doc,String html){
