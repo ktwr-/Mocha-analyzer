@@ -146,11 +146,12 @@ public class jscript {
 				html = html.replaceAll(Pattern.quote(tmp.toString()), mdhtml);
 			}
 		}
-		Elements divstyle = doc.getElementsByAttribute("style=");
+		Elements divstyle = doc.getElementsByAttribute("style");
 		// modify style attribute
 		String styletext = "";
 		for(int i=0;i < divstyle.size();i++){
 			Element tmp = divstyle.get(i);
+			System.out.println(tmp.toString());
 			String stylepat = "(.*?)style=\"(.*?)\"(.*)";
 			String id = String.valueOf(eventid);
 			Matcher stylem = patternmatch(tmp.toString(),stylepat);
@@ -163,7 +164,7 @@ public class jscript {
 					mdhtml = stylem.group(1)+stylem.group(3);
 					id = idm.group(2);
 				}else{
-					mdhtml += "id=\""+eventid+"\"";
+					mdhtml = stylem.group(1)+"id=\""+eventid+"\""+stylem.group(3)+"\n";
 					eventid++;
 				}
 			styletext += textStyleAttr(id,styleAttr);
@@ -174,7 +175,7 @@ public class jscript {
 		}
 		if(!styletext.equals("")){
 			try{
-				File file = new File("styleattr.css");
+				File file = new File("./csp/styleattr.css");
 				FileWriter fw = new FileWriter(file);
 				fw.write(styletext);
 				fw.close();
@@ -182,7 +183,7 @@ public class jscript {
 				System.out.println(e);
 			}
 			Element header = doc.getElementById("head");
-			header.append("<link href=\"styleattr.css\" rel=\"stylesheet\" type=\"text/css\">");
+			//header.append("<link href=\"styleattr.css\" rel=\"stylesheet\" type=\"text/css\">");
 		}
 		
 		
@@ -453,7 +454,7 @@ public class jscript {
 	}
 	
 	public static void copyfile() throws IOException{
-		String[] command = {"/bin/sh", "-c","cp -r ./gsimaps/* ./csp"};
+		String[] command = {"/bin/sh", "-c","cp -r ./test/* ./csp"};
 		Runtime.getRuntime().exec("mkdir csp");
 		Runtime.getRuntime().exec(command);
 		System.out.println("cp command");
