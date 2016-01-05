@@ -40,7 +40,8 @@ public class NonceSource {
 			String nonce = calculate_random(script.toString());
 			noncelist.add(nonce);
 			//add nonce-hash
-			script.toString().replaceAll(Pattern.quote("<script>"), "<script nonce=\""+nonce+"\">");
+			String replacehtml = script.toString().replaceAll(Pattern.quote("<script>"), "<script nonce=\""+nonce+"\">");
+			html = html.replaceAll(Pattern.quote(script.toString()), replacehtml);
 		}
 		return null;
 	}
