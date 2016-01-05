@@ -34,38 +34,62 @@ public class jscript {
 	static char eventid = 'a';
 	static char eventname= 'a';
 	static Boolean baJS = false;
+	static int csplevel = 2;
+	static Boolean noncesource =false;
 	
 	public static void main(String args[]) throws IOException{
 		jscript js = new jscript();
-		analyzeScript aS = new analyzeScript();
-		
-		try {
-			copyfile();
-			System.out.println("finish");
-			Thread.sleep(1000);
-			js.getfilename("./csp");
-		} catch (IOException e) {
-			System.out.println(e);
-		} catch (InterruptedException e){
-			System.out.println(e);
+		if(csplevel == 1){
+			analyzeScript aS = new analyzeScript();
+			
+			try {
+				copyfile();
+				System.out.println("finish");
+				Thread.sleep(1000);
+				js.getfilename("./csp");
+			} catch (IOException e) {
+				System.out.println(e);
+			} catch (InterruptedException e){
+				System.out.println(e);
+			}
+			
+			js.inline_init();
+			//js.htmlanalyze("./csp/test.html");
+			
+			for(int i=0;i<htmlfile.size();i++){
+				System.out.println(htmlfile.get(i));
+				js.htmlanalyze(htmlfile.get(i));
+			}
+			//System.out.println("sample");
+			//for(int i=0;i<jsfile.size();i++){
+			//	System.out.println(jsfile.get(i));
+			//	aS.analyzeScript(jsfile.get(i));
+			//}
+			
+		}else if(csplevel == 2){
+			if(noncesource == true){
+				for(int i = 0;i<htmlfile.size();i++){
+					NonceSource  ns = new NonceSource();
+				}
+			}else{
+				System.out.println("test");
+				try {
+					copyfile();
+					System.out.println("finish");
+					Thread.sleep(1000);
+					js.getfilename("./csp");
+				} catch (IOException e) {
+					System.out.println(e);
+				} catch (InterruptedException e){
+					System.out.println(e);
+				}
+				//source hash script
+				for(int i = 0;i<htmlfile.size();i++){
+					SourceHash sh = new SourceHash();
+					sh.add_source_hash(htmlfile.get(i));;
+				}
+			}
 		}
-		
-		
-		
-		js.inline_init();
-		//js.htmlanalyze("./csp/test.html");
-		
-		for(int i=0;i<htmlfile.size();i++){
-			System.out.println(htmlfile.get(i));
-			js.htmlanalyze(htmlfile.get(i));
-		}
-		//System.out.println("sample");
-		//for(int i=0;i<jsfile.size();i++){
-		//	System.out.println(jsfile.get(i));
-		//	aS.analyzeScript(jsfile.get(i));
-		//}
-		
-		
 	}
 	
 	public void inline_init(){
@@ -82,7 +106,6 @@ public class jscript {
 		header.append("<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *; script-src 'self'; object-src 'self'; style-src 'self';\">");
 		return doc;
 	}
-	
 	
 	
 	
