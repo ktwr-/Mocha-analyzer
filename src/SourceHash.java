@@ -13,14 +13,15 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 public class SourceHash {
-	ArrayList<String> hashlist = new ArrayList<String>();
+	ArrayList<String> scripthashlist = new ArrayList<String>();
+	ArrayList<String> stylehashlist = new ArrayList<String>();
 	SourceHash(){
 		
 	}
 	
 	public static void main(String args[]){
 		SourceHash sh = new SourceHash();
-		String test = sh.calc_hash("console.log(/<(.*?)>/.test(\"<string>\"));", "sha-256");
+		String test = sh.calc_hash("alert('引くなっ！');", "sha-256");
 		System.out.println(test);
 	}
 	
@@ -28,7 +29,7 @@ public class SourceHash {
 		try{
 			File file = new File(filename);
 			Document doc = Jsoup.parse(file,"UTF-8");
-			source_hash(doc);
+			scripthashlist = new ArrayList<String>(source_hash(doc,"script"));
 			doc = insertCSP(doc);
 		}catch(IOException e){
 			System.out.println(e);
@@ -38,11 +39,13 @@ public class SourceHash {
 	public Document insertCSP(Document doc){
 		StringBuilder sb = new StringBuilder();
 			sb.append("<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *; script-src 'self' ");
-		for(int i = 0;i < hashlist.size();i++){
-			sb.append("'");
-			System.out.println(hashlist.get(i));
-			sb.append(hashlist.get(i));
-			sb.append("' ");
+		if(!scripthashlist.isEmpty()){
+			for(int i = 0;i < scripthashlist.size();i++){	
+				sb.append("'");
+				System.out.println(scripthashlist.get(i));
+				sb.append(scripthashlist.get(i));
+				sb.append("' ");
+			}
 		}
 		sb.append(";obj-src 'self';style-src 'self';\">");
 		Elements head = doc.getElementsByTag("head");
@@ -52,13 +55,14 @@ public class SourceHash {
 		return doc;
 	}
 	
-	public void source_hash(Document doc){
-		Elements ele = doc.getElementsByTag("script");
+	public ArrayList<String> source_hash(Document doc,String tagname){
+		ArrayList<String> hashlist = new ArrayList<String>();
+		Elements ele = doc.getElementsByTag(tagname);
 		for(int i =0;i<ele.size();i++){
 			Element script = ele.get(i);
 			if(!script.toString().contains("src")){
 				String source = script.toString();
-				String sourcepat = "<script>([\\s\\S]*)</script>";
+				String sourcepat = "<"+tagname+">([\\s\\S]*)</"+tagname+">";
 				Pattern p = Pattern.compile(sourcepat);
 				Matcher m = p.matcher(source);
 				m.find();
@@ -66,6 +70,7 @@ public class SourceHash {
 					hashlist.add("sha256-"+hash);
 			}
 		}
+		return hashlist;
 	}
 	
 	public String calc_hash(String source,String algoname){

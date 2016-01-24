@@ -25,8 +25,9 @@ public class jscript {
 	static ArrayList<String> fileextension = new ArrayList<String>();
 	static HashMap<String,String> eventhandler = new HashMap<String,String>();
 	static HashMap<String,String> eventbody = new HashMap<String,String>();
-	static ArrayList<String> htmlfile = new ArrayList<String>();
-	static ArrayList<String> jsfile = new ArrayList<String>();
+	ArrayList<String> htmlfile = new ArrayList<String>();
+	ArrayList<String> jsfile = new ArrayList<String>();
+	ArrayList<String> ejsfile = new ArrayList<String>();
 	static ArrayList<String> header;
 	static ArrayList<String> body;
 	static char jsfilename = 'a';
@@ -56,9 +57,9 @@ public class jscript {
 			js.inline_init();
 			//js.htmlanalyze("./csp/test.html");
 			
-			for(int i=0;i<htmlfile.size();i++){
-				System.out.println(htmlfile.get(i));
-				js.htmlanalyze(htmlfile.get(i));
+			for(int i=0;i<js.htmlfile.size();i++){
+				System.out.println(js.htmlfile.get(i));
+				js.htmlanalyze(js.htmlfile.get(i));
 			}
 			//System.out.println("sample");
 			//for(int i=0;i<jsfile.size();i++){
@@ -68,7 +69,7 @@ public class jscript {
 			
 		}else if(csplevel == 2){
 			if(noncesource == true){
-				for(int i = 0;i<htmlfile.size();i++){
+				for(int i = 0;i<js.ejsfile.size();i++){
 					NonceSource  ns = new NonceSource();
 				}
 			}else{
@@ -84,9 +85,9 @@ public class jscript {
 					System.out.println(e);
 				}
 				//source hash script
-				for(int i = 0;i<htmlfile.size();i++){
+				for(int i = 0;i<js.htmlfile.size();i++){
 					SourceHash sh = new SourceHash();
-					sh.add_source_hash(htmlfile.get(i));;
+					sh.add_source_hash(js.htmlfile.get(i));;
 				}
 			}
 		}
@@ -464,6 +465,8 @@ public class jscript {
 					htmlfile.add(files[i].toString());
 				}else if(files[i].getName().contains(".js")){
 					jsfile.add(files[i].toString());
+				}else if(files[i].getName().contains(".ejs")){
+					ejsfile.add(files[i].toString());
 				}
 			}else if(files[i].isDirectory()){
 				getfilename(files[i].toString());

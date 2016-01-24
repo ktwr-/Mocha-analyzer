@@ -8,6 +8,10 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import org.mozilla.javascript.*;
+
+// only support ejs
+
 public class NonceSource {
 	
 	ArrayList<String> noncelist = new ArrayList<String>();
@@ -45,9 +49,13 @@ public class NonceSource {
 		}
 		return null;
 	}
-	
+	public void search_ejsrender(ArrayList<String> jsfilename,String filename){
+		for(int i=0;i<jsfilename.size();i++){
+			File file = new File(jsfilename.get(i));
+			
+		}
+	}
 	public String calculate_random(String source){
-		String random;
 		
 		return null;
 	}
