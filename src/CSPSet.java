@@ -18,24 +18,34 @@ public class CSPSet {
 	ArrayList<String> styledomain;
 	ArrayList<String> scripthash;
 	ArrayList<String> stylehash;
+	Boolean bscdomain,bstdomain;
+	Boolean bschash,bsthash;
 	
 	CSPSet(String policy){
 		csp_policy =policy;
 	}
 	
 	CSPSet(){
-		
+		bschash=false;
+		bsthash=false;
+		bscdomain=false;
+		bstdomain=false;
 	}
 	
-	CSPSet(ArrayList<String> hashsc,ArrayList<String> hashst){
-		if(!hashsc.isEmpty() ){
-			scripthash = new ArrayList<String>(hashsc);
+	public Document setCSP(Document doc){
+		StringBuilder sb = new StringBuilder();
+		String policy = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *;script-src 'self';";
+		sb.append(policy);
+		System.out.println(sb.toString());
+		if(bschash){
+			
 		}
-		if(!hashst.isEmpty()){
-			stylehash = new ArrayList<String>(hashst);
+		if(bscdomain){
+			
 		}
-		
+		return null;
 	}
+	
 	
 	public static void main(String args[]){
 			CSPSet cs = new CSPSet();
@@ -43,6 +53,7 @@ public class CSPSet {
 			ArrayList<String> file = new ArrayList<String>();
 			file.add("./test/test.html");
 			cs.add_path_matching(file);
+			cs.setCSP(null);
 	}
 	
 	public void init(){
@@ -108,5 +119,13 @@ public class CSPSet {
 		return null;
 	}
 	
+	public void setHashScript(ArrayList<String> hashsc){
+		scripthash = new ArrayList<String>(hashsc);
+		bschash = true;
+	}
+	public void setHashStyle(ArrayList<String> hashst){
+		stylehash = new ArrayList<String>(hashst);
+		bsthash = true;
+	}
 	
 }
