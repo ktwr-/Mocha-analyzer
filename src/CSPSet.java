@@ -30,20 +30,76 @@ public class CSPSet {
 		bsthash=false;
 		bscdomain=false;
 		bstdomain=false;
+		init();
 	}
 	
-	public Document setCSP(Document doc){
+	public Document setCSP(Document doc,int csplevel){
 		StringBuilder sb = new StringBuilder();
-		String policy = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *;script-src 'self';";
+		String policy = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *;script-src 'self' ";
+		String stpolicy = "style-src 'self'";
+		String quote = "'";
+		String coron = ";";
 		sb.append(policy);
-		System.out.println(sb.toString());
+		
+		if(csplevel == 1){
+			scriptdomain = new ArrayList<String>(search_domain_for1("script",doc));
+			if(!scriptdomain.isEmpty()) bscdomain = true;
+				
+			styledomain = new ArrayList<String>(search_domain_for1("link",doc));
+			if(!styledomain.isEmpty()) bstdomain = true;
+				
+		}else if(csplevel == 2){
+			scriptdomain = new ArrayList<String>(search_domain_for2("script",doc));
+			if(!scriptdomain.isEmpty()) bscdomain = true;
+				
+			styledomain = new ArrayList<String>(search_domain_for2("link",doc));
+			if(!styledomain.isEmpty()) bstdomain = true;
+		}
+		
 		if(bschash){
-			
+			for(int i=0; i < scripthash.size(); i++){
+				sb.append(quote);
+				sb.append(scripthash.get(i));
+				sb.append(quote);
+			}
 		}
 		if(bscdomain){
-			
+			for(int i=0; i < scriptdomain.size(); i++){
+				sb.append(quote);
+				sb.append(scriptdomain.get(i));
+				sb.append(quote);
+			}
 		}
-		return null;
+		sb.append(coron);
+		sb.append(stpolicy);
+		if(bsthash){
+			for(int i=0; i< stylehash.size(); i++){
+				sb.append(quote);
+				sb.append(stylehash.get(i));
+				sb.append(quote);
+			}
+		}
+		if(bstdomain){
+			for(int i = 0; i < styledomain.size(); i++){
+				sb.append(quote);
+				sb.append(styledomain.get(i));
+				sb.append(quote);
+			}
+		}
+		sb.append(coron);
+		sb.append("\">");
+		System.out.println(sb.toString());
+		Elements header = doc.getElementsByTag("head");
+		if(!header.get(0).toString().contains("Content-Security-Policy")){
+			header.append(sb.toString());
+		}else{
+			String pat ="(.*)(<meta.*?http-equiv.*?Content-Security-Policy.*>)(.*)";
+			Matcher m = Pattern.compile(pat).matcher(header.toString());
+			m.find();
+			System.out.println("test");
+			System.out.println(m.group(2));
+		}
+		return doc;
 	}
 	
 	
@@ -53,7 +109,14 @@ public class CSPSet {
 			ArrayList<String> file = new ArrayList<String>();
 			file.add("./test/test.html");
 			cs.add_path_matching(file);
-			cs.setCSP(null);
+			try {
+				Document doc = Jsoup.parse(new File(file.get(0)),"UTF-8");
+				doc  = cs.setCSP(doc,1);
+				System.out.println(doc.toString());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 	}
 	
 	public void init(){
@@ -85,7 +148,9 @@ public class CSPSet {
 		ArrayList<String> domain = new ArrayList<String>();
 		for(int i = 0; i < ele.size(); i++){
 			Element tmp = ele.get(i);
+			System.out.println(tmp.toString());
 			if(tmp.toString().contains("http")){
+				bstdomain = true;
 				String pat = "(.*)(https?://.*\\."+tagmatch.get(tagname)+")\"(.*)";
 				Matcher m = Pattern.compile(pat).matcher(tmp.toString());
 				if(m.find()){
@@ -105,6 +170,7 @@ public class CSPSet {
 		for(int i=0;i<ele.size();i++){
 			Element tmp = ele.get(i);
 			if(tmp.toString().contains("http")){
+				bstdomain=true;
 				String pat = "(.*)(https?://.*?)(/.*\\."+tagmatch.get(tagname)+")\"(.*)";
 				Matcher m = Pattern.compile(pat).matcher(tmp.toString());
 				if(m.find()){
@@ -113,10 +179,7 @@ public class CSPSet {
 				}
 			}
 		}
-		if(!domain.isEmpty()){
-			return domain;
-		}
-		return null;
+		return domain;
 	}
 	
 	public void setHashScript(ArrayList<String> hashsc){

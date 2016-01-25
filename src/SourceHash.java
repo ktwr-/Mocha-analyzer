@@ -25,15 +25,17 @@ public class SourceHash {
 		System.out.println(test);
 	}
 	
-	public void add_source_hash(String filename){
+	public Document add_source_hash(String filename){
+		Document doc=null;
 		try{
 			File file = new File(filename);
-			Document doc = Jsoup.parse(file,"UTF-8");
+			doc = Jsoup.parse(file,"UTF-8");
 			scripthashlist = new ArrayList<String>(source_hash(doc,"script"));
-			doc = insertCSP(doc);
+			stylehashlist = new ArrayList<String>(source_hash(doc,"style"));
 		}catch(IOException e){
 			System.out.println(e);
 		}
+		return doc;
 	}
 	
 	public Document insertCSP(Document doc){
@@ -62,12 +64,13 @@ public class SourceHash {
 			Element script = ele.get(i);
 			if(!script.toString().contains("src")){
 				String source = script.toString();
-				String sourcepat = "<"+tagname+">([\\s\\S]*)</"+tagname+">";
+				String sourcepat = "<"+tagname+".*?>([\\s\\S]*)</"+tagname+">";
 				Pattern p = Pattern.compile(sourcepat);
 				Matcher m = p.matcher(source);
-				m.find();
+				if(m.find()){
 					String hash = calc_hash(m.group(1),"sha-256");
 					hashlist.add("sha256-"+hash);
+				}
 			}
 		}
 		return hashlist;

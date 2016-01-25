@@ -85,9 +85,17 @@ public class jscript {
 					System.out.println(e);
 				}
 				//source hash script
+				Document doc;
 				for(int i = 0;i<js.htmlfile.size();i++){
+					CSPSet csp = new CSPSet();
 					SourceHash sh = new SourceHash();
-					sh.add_source_hash(js.htmlfile.get(i));;
+					doc = sh.add_source_hash(js.htmlfile.get(i));
+					String html = js.divideevent(doc, doc.toString());
+					csp.setHashScript(sh.scripthashlist);
+					csp.setHashStyle(sh.stylehashlist);
+					doc = csp.setCSP(doc,csplevel);
+					System.out.println("\nlast result\n");
+					System.out.println(doc.toString());
 				}
 			}
 		}
@@ -113,11 +121,11 @@ public class jscript {
 	/**/
 	
 	public void htmlanalyze(String filename){
+		CSPSet csp = new CSPSet();
 		try{
 			String filepat = "(.*)/(.*)\\.(.*)";
 			File file = new File(filename);
 			Document doc = Jsoup.parse(file, "UTF-8");
-			doc = insertCSP(doc);
 			String html = doc.toString();
 			html = dividescript(doc,html);
 			doc = Jsoup.parse(html);
@@ -126,8 +134,11 @@ public class jscript {
 			html = dividehref(doc,html);
 			doc = Jsoup.parse(html);
 			html = divideevent(doc,html);
+			doc = Jsoup.parse(html);
+			doc = csp.setCSP(doc,csplevel);
+			html = doc.toString();
 			FileWriter fw = new FileWriter(file);
-			System.out.println(html+"\n");
+			System.out.println("\nlast result\n"+html+"\n");
 			fw.write(html);
 			fw.close();
 		}catch(IOException e){
@@ -175,7 +186,7 @@ public class jscript {
 		String styletext = "";
 		for(int i=0;i < divstyle.size();i++){
 			Element tmp = divstyle.get(i);
-			System.out.println(tmp.toString());
+			//System.out.println(tmp.toString());
 			String stylepat = "(.*?)style=\"(.*?)\"(.*)";
 			String id = String.valueOf(eventid);
 			Matcher stylem = patternmatch(tmp.toString(),stylepat);
@@ -227,7 +238,7 @@ public class jscript {
 					String pat="(.*)\"javascript:(.*?)\"(.*)";
 					Matcher m = patternmatch(tmp.toString(),pat);
 					if(m != null){
-						System.out.println(m.group(2));
+						//System.out.println(m.group(2));
 						if(m.group(2).contains("void(0)")){
 							baJS = true;
 							/*pattern <a href="javascript:(javascript)void(0)" onclick="(javascript)">test</a>*/
@@ -235,14 +246,14 @@ public class jscript {
 								String onclickpat = "(.*?)onclick=\"(.*?)\"(.*)";
 								String script = m.group(2);
 								Matcher onclickm = patternmatch(m.group(1)+"\"\""+m.group(3),onclickpat);
-								System.out.println(onclickm.group());
+								//System.out.println(onclickm.group());
 								html = html.replaceAll(Pattern.quote(m.group()), onclickm.group(1)+"onclick=\""+onclickm.group(2)+";"+script+"\""+onclickm.group(3));
 							/*pattern <a href="javascript:(javascript)void(0)></a>*/
 							}else{
 								html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
 							}
 						}else{
-							System.out.println(m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
+							//System.out.println(m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
 							html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
 							//System.out.println("test print\n");
 						}
