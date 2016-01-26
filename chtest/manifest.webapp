@@ -1,8 +1,0 @@
-{
-  "name": "test app",
-  "description": "はじめてのFirefox OSアプリ",
-  "launch_path": "/test.html",
-  "icons": {
-    "128": "/img/icon-128.png"
-  }
-}

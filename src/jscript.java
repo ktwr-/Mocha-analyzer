@@ -35,7 +35,7 @@ public class jscript {
 	static char eventid = 'a';
 	static char eventname= 'a';
 	static Boolean baJS = false;
-	static int csplevel = 2;
+	static int csplevel = 1;
 	static Boolean noncesource =false;
 	
 	public static void main(String args[]) throws IOException{
@@ -89,8 +89,11 @@ public class jscript {
 				for(int i = 0;i<js.htmlfile.size();i++){
 					CSPSet csp = new CSPSet();
 					SourceHash sh = new SourceHash();
-					doc = sh.add_source_hash(js.htmlfile.get(i));
-					String html = js.divideevent(doc, doc.toString());
+					String filename= js.htmlfile.get(i);
+					String filepat = "(.*/)(.*)\\.(.*)";
+					String directory = patternmatch(filename,filepat).group(1);
+					doc = sh.add_source_hash(filename);
+					String html = js.divideevent(doc, doc.toString(),directory);
 					csp.setHashScript(sh.scripthashlist);
 					csp.setHashStyle(sh.stylehashlist);
 					doc = csp.setCSP(doc,csplevel);
@@ -123,17 +126,18 @@ public class jscript {
 	public void htmlanalyze(String filename){
 		CSPSet csp = new CSPSet();
 		try{
-			String filepat = "(.*)/(.*)\\.(.*)";
+			String filepat = "(.*/)(.*)\\.(.*)";
+			String directory = patternmatch(filename,filepat).group(1);
 			File file = new File(filename);
 			Document doc = Jsoup.parse(file, "UTF-8");
 			String html = doc.toString();
-			html = dividescript(doc,html);
+			html = dividescript(doc,html,directory);
 			doc = Jsoup.parse(html);
 			html = dividestyle(doc,html,patternmatch(filename,filepat).group(2));
 			doc = Jsoup.parse(html);
 			html = dividehref(doc,html);
 			doc = Jsoup.parse(html);
-			html = divideevent(doc,html);
+			html = divideevent(doc,html,directory);
 			doc = Jsoup.parse(html);
 			doc = csp.setCSP(doc,csplevel);
 			html = doc.toString();
@@ -157,14 +161,14 @@ public class jscript {
 		}
 	}
 	
-	public String dividescript(Document doc, String html){
+	public String dividescript(Document doc, String html,String filepath){
 		Elements script = doc.getElementsByTag("script");
 		for(int i=0;i < script.size();i++){
 			Element tmp = script.get(i);
 			if(tmp.toString().contains("src=")){
 				String pat="(.*)<script().*src=(.*)>(.*)";
 			}else{
-				String mdhtml = dividescript(tmp.data());
+				String mdhtml = dividescript(tmp.data(),filepath);
 				html = html.replaceAll(Pattern.quote(tmp.toString()), mdhtml);
 			}
 		}
@@ -228,9 +232,6 @@ public class jscript {
 	}
 	
 	public String dividehref(Document doc,String html){
-		File file= new File("./csp/event.js");
-		try{
-			FileWriter fw = new FileWriter(file);
 			Elements atag = doc.getElementsByTag("a");
 			for(int i=0;i < atag.size();i++){
 				Element tmp = atag.get(i);
@@ -261,16 +262,13 @@ public class jscript {
 						
 				}
 			}
-		}catch(IOException e){
-			System.out.println(e);
-		}
 		return html;
 	}
 	
-	public String divideevent(Document doc,String html){
+	public String divideevent(Document doc,String html,String filepath){
 		
 		System.out.println("\n divide event");
-		File file = new File("./csp/event.js");
+		File file = new File(filepath+"event.js");
 		int flag=0;
 		try{
 			FileWriter fw = new FileWriter(file);	
@@ -405,12 +403,12 @@ public class jscript {
 	}
 	
 	/*divide file from html(now only Javascript)*/
-	public static String dividescript(String text){
+	public static String dividescript(String text,String filepath){
 		//System.out.println(text);
 		/*write file*/
 		String mdhtml="";
 		try{
-			File file = new File("./csp/"+jsfilename+".js");
+			File file = new File(filepath+jsfilename+".js");
 			FileWriter fw = new FileWriter(file);
 			fw.write(text);
 			
