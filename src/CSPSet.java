@@ -96,8 +96,11 @@ public class CSPSet {
 			String pat ="(.*)(<meta.*?http-equiv.*?Content-Security-Policy.*>)(.*)";
 			Matcher m = Pattern.compile(pat).matcher(header.toString());
 			m.find();
-			System.out.println("test");
 			System.out.println(m.group(2));
+			String html = doc.toString().replaceFirst(Pattern.quote(m.group(2)), "");
+			doc = Jsoup.parse(html);
+			header = doc.getElementsByTag("head");
+			header.append(sb.toString());
 		}
 		return doc;
 	}
