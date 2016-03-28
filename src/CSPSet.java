@@ -1,4 +1,5 @@
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,8 +36,8 @@ public class CSPSet {
 	
 	public Document setCSP(Document doc,int csplevel){
 		StringBuilder sb = new StringBuilder();
-		String policy = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *;script-src 'self' ";
-		String stpolicy = "style-src 'self'";
+		String policy = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *; report-uri /report.php;script-src 'self' ";
+		String stpolicy = "style-src 'self' ";
 		String quote = "'";
 		String coron = ";";
 		sb.append(policy);
@@ -108,15 +109,38 @@ public class CSPSet {
 	
 	public static void main(String args[]){
 			CSPSet cs = new CSPSet();
+			jscript ajs = new jscript();
 			cs.init();
 			ArrayList<String> file = new ArrayList<String>();
-			file.add("./test/test.html");
 			cs.add_path_matching(file);
 			try {
-				Document doc = Jsoup.parse(new File(file.get(0)),"UTF-8");
-				doc  = cs.setCSP(doc,1);
-				System.out.println(doc.toString());
+				copyfile();
+				System.out.println("finish");
+				Thread.sleep(10000);
+				ajs.getfilename("./csp");
 			} catch (IOException e) {
+				System.out.println(e);
+			} catch (InterruptedException e){
+				System.out.println(e);
+			}
+			
+			//js.htmlanalyze("./csp/test.html");
+			for(int i=0;i<ajs.htmlfile.size();i++){
+				System.out.println(ajs.htmlfile.get(i));
+				file.add(ajs.htmlfile.get(i));
+			}
+			try {
+				for(int i =0;i<file.size();i++){
+				Document doc = Jsoup.parse(new File(file.get(i)),"UTF-8");
+				doc  = cs.insertnoneCSP(doc);
+				System.out.println(doc.toString());
+				File f = new File(file.get(i));
+				FileWriter fw = new FileWriter(f);
+				fw.write(doc.toString());
+				fw.close();
+				
+				}
+			}	 catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -136,7 +160,7 @@ public class CSPSet {
 				// for script tag
 				scriptdomain = new ArrayList<String>(search_domain_for2("script",doc));
 				// for style tag
-				styledomain = new ArrayList<String>(search_domain_for2("style",doc));
+				styledomain = new ArrayList<String>(search_domain_for2("link",doc));
 				
 			
 			}catch(IOException e){
@@ -193,5 +217,26 @@ public class CSPSet {
 		stylehash = new ArrayList<String>(hashst);
 		bsthash = true;
 	}
+	
+	public Document insertselfCSP(Document doc){
+		Element head = doc.getElementsByTag("head").get(0);
+		String header = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'self'; report-uri /report.php \">";
+		head.append(header);
+		return doc;
+	}
+	public Document insertnoneCSP(Document doc){
+		Element head = doc.getElementsByTag("head").get(0);
+		String header = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; report-uri /report.php \">";
+	
+		head.append(header);
+		return doc;
+	}
+	public static void copyfile() throws IOException{
+		String[] command = {"/bin/sh", "-c","cp -r ./hyouka/* ./csp"};
+		Runtime.getRuntime().exec("mkdir csp");
+		Runtime.getRuntime().exec(command);
+		System.out.println("cp command");
+	}
+
 	
 }

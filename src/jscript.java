@@ -35,11 +35,12 @@ public class jscript {
 	char eventid = 'a';
 	char eventname= 'a';
 	Boolean baJS = false;
-	int csplevel = 1;
+	int csplevel = 2;
 	Boolean noncesource =false;
 	
 	public static void main(String args[]) throws IOException{
 		jscript ajs = new jscript();
+		ajs.inline_init();
 		if(ajs.csplevel == 1){
 			analyzeScript aS = new analyzeScript();
 			
@@ -54,7 +55,6 @@ public class jscript {
 				System.out.println(e);
 			}
 			
-			ajs.inline_init();
 			//js.htmlanalyze("./csp/test.html");
 			for(int i=0;i<ajs.htmlfile.size();i++){
 				System.out.println(ajs.htmlfile.get(i));
@@ -80,7 +80,7 @@ public class jscript {
 				try {
 					copyfile();
 					System.out.println("finish");
-					Thread.sleep(1000);
+					Thread.sleep(10000);
 					ajs.getfilename("./csp");
 				} catch (IOException e) {
 					System.out.println(e);
@@ -96,13 +96,21 @@ public class jscript {
 					String filename= ajs.htmlfile.get(i);
 					String filepat = "(.*/)(.*)\\.(.*)";
 					String directory = patternmatch(filename,filepat).group(1);
+					String beforedot = patternmatch(filename,filepat).group(2);
 					doc = sh.add_source_hash(filename);
 					String html = js.divideevent(doc, doc.toString(),directory);
+					doc = Jsoup.parse(html);
+					html = js.divide_styleid(doc,html,beforedot,directory);
+					doc = Jsoup.parse(html);
 					csp.setHashScript(sh.scripthashlist);
 					csp.setHashStyle(sh.stylehashlist);
 					doc = csp.setCSP(doc,ajs.csplevel);
 					System.out.println("\nlast result\n");
 					System.out.println(doc.toString());
+					File file = new File(filename);
+					FileWriter fw = new FileWriter(file);
+					fw.write(doc.toString());
+					fw.close();
 				}
 			}
 		}
@@ -139,6 +147,8 @@ public class jscript {
 			html = dividescript(doc,html,directory);
 			doc = Jsoup.parse(html);
 			html = dividestyle(doc,html,beforedot,directory);
+			doc = Jsoup.parse(html);
+			html = divide_styleid(doc,html,beforedot,directory);
 			doc = Jsoup.parse(html);
 			html = dividehref(doc,html);
 			doc = Jsoup.parse(html);
@@ -180,16 +190,7 @@ public class jscript {
 		return html;
 	}
 	
-	public String dividestyle(Document doc,String html,String filename,String filepath){
-		Elements style = doc.getElementsByTag("style");
-		for(int i=0; i< style.size();i++){
-			Element tmp = style.get(i);
-			//System.out.println(tmp.toString());
-			if(!tmp.toString().contains("src=")){
-				String mdhtml = dividestyle(tmp.data(),filepath);
-				html = html.replaceFirst(Pattern.quote(tmp.toString()), mdhtml);
-			}
-		}
+	public String divide_styleid(Document doc,String html, String filename,String filepath){
 		Elements divstyle = doc.getElementsByAttribute("style");
 		// modify style attribute
 		String styletext = "";
@@ -232,8 +233,65 @@ public class jscript {
 			header.append("<link href=\""+filename+"styleattr.css\" rel=\"stylesheet\" type=\"text/css\">");
 		}
 		
-		
 		return doc.toString();
+	}
+	
+	public String dividestyle(Document doc,String html,String filename,String filepath){
+		Elements style = doc.getElementsByTag("style");
+		for(int i=0; i< style.size();i++){
+			Element tmp = style.get(i);
+			//System.out.println(tmp.toString());
+			if(!tmp.toString().contains("src=")){
+				String mdhtml = dividestyle(tmp.data(),filepath);
+				html = html.replaceFirst(Pattern.quote(tmp.toString()), mdhtml);
+			}
+		}
+		return html;
+		/*
+		Elements divstyle = doc.getElementsByAttribute("style");
+		// modify style attribute
+		String styletext = "";
+		for(int i=0;i < divstyle.size();i++){
+			Element tmp = divstyle.get(i);
+			//System.out.println(tmp.toString());
+			String stylepat = "(.*?)style=\"(.*?)\"(.*)";
+			String id = String.valueOf(eventid);
+			Matcher stylem = patternmatch(tmp.toString(),stylepat);
+			if(stylem != null){
+				String styleline= patternmatch(tmp.toString(),"(.*?)>(.*)").group(1)+">";
+				System.out.println(styleline+"\n");
+				String styleAttr = stylem.group(2);
+				String mdhtml = "";
+				String idpat = "<(.*?)id=\"(.*?)\"(.*?)>(.*)";
+				Matcher idm = patternmatch(styleline,idpat);
+				if(idm !=null){
+					mdhtml = stylem.group(1)+stylem.group(3);
+					id = idm.group(2);
+				}else{
+					mdhtml = stylem.group(1)+"id=\""+eventid+"\""+stylem.group(3)+"\n";
+					eventid++;
+				}
+			styletext += textStyleAttr(id,styleAttr)+"\n";
+			html = html.replaceFirst(Pattern.quote(styleline),mdhtml); 
+			}
+			
+		doc = Jsoup.parse(html);
+		}
+		if(!styletext.equals("")){
+			try{
+				File file = new File(filepath+filename+"styleattr.css");
+				FileWriter fw = new FileWriter(file);
+				fw.write(styletext);
+				fw.close();
+			}catch(IOException e){
+				System.out.println(e);
+			}
+			Elements header = doc.getElementsByTag("head");
+			header.append("<link href=\""+filename+"styleattr.css\" rel=\"stylesheet\" type=\"text/css\">");
+		}
+		
+	*/
+		//return doc.toString();
 	}
 	
 	public String dividehref(Document doc,String html){
@@ -282,12 +340,12 @@ public class jscript {
 			}
 			
 			for(String key : eventhandler.keySet()){
+				System.out.println(key);
 				Elements evhand = doc.getElementsByAttribute(key);
 				for(int i=0;i<evhand.size();i++){
 					String evid="";
 					Element tmp = evhand.get(i);
 					Boolean preventevent = false;
-					//System.out.println(tmp.toString());
 					String pat = "(.*)"+key+"=\"(.*?)\"(.*)";
 					String patid = "(.*)id=\"(.*?)\"(.*)";
 					Matcher m = patternmatch(tmp.toString(),pat);
