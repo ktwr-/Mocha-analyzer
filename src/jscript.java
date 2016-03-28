@@ -128,6 +128,7 @@ public class jscript {
 		try{
 			String filepat = "(.*/)(.*)\\.(.*)";
 			String directory = patternmatch(filename,filepat).group(1);
+			String beforedot = patternmatch(filename,filepat).group(2);
 			File file = new File(filename);
 			Document doc = Jsoup.parse(file, "UTF-8");
 			String html = doc.toString();
