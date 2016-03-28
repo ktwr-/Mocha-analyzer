@@ -28,41 +28,38 @@ public class jscript {
 	ArrayList<String> htmlfile = new ArrayList<String>();
 	ArrayList<String> jsfile = new ArrayList<String>();
 	ArrayList<String> ejsfile = new ArrayList<String>();
-	ArrayList<String> header;
-	ArrayList<String> body;
-	char jsfilename = 'a';
-	char stylefilename = 'a';
-	char eventid = 'a';
-	char eventname= 'a';
-	Boolean baJS = false;
-	int csplevel = 2;
-	Boolean noncesource =false;
+	static ArrayList<String> header;
+	static ArrayList<String> body;
+	static char jsfilename = 'a';
+	static char stylefilename = 'a';
+	static char eventid = 'a';
+	static char eventname= 'a';
+	static Boolean baJS = false;
+	static int csplevel = 1;
+	static Boolean noncesource =false;
 	
 	public static void main(String args[]) throws IOException{
-		jscript ajs = new jscript();
-		ajs.inline_init();
-		if(ajs.csplevel == 1){
+		jscript js = new jscript();
+		if(csplevel == 1){
 			analyzeScript aS = new analyzeScript();
 			
 			try {
 				copyfile();
 				System.out.println("finish");
-				Thread.sleep(10000);
-				ajs.getfilename("./csp");
+				Thread.sleep(1000);
+				js.getfilename("./csp");
 			} catch (IOException e) {
 				System.out.println(e);
 			} catch (InterruptedException e){
 				System.out.println(e);
 			}
 			
+			js.inline_init();
 			//js.htmlanalyze("./csp/test.html");
-			for(int i=0;i<ajs.htmlfile.size();i++){
-				System.out.println(ajs.htmlfile.get(i));
-			}
 			
-			for(int i=0;i<ajs.htmlfile.size();i++){
-				jscript js = new jscript();
-				js.htmlanalyze(ajs.htmlfile.get(i));
+			for(int i=0;i<js.htmlfile.size();i++){
+				System.out.println(js.htmlfile.get(i));
+				js.htmlanalyze(js.htmlfile.get(i));
 			}
 			//System.out.println("sample");
 			//for(int i=0;i<jsfile.size();i++){
@@ -70,9 +67,9 @@ public class jscript {
 			//	aS.analyzeScript(jsfile.get(i));
 			//}
 			
-		}else if(ajs.csplevel == 2){
-			if(ajs.noncesource == true){
-				for(int i = 0;i<ajs.ejsfile.size();i++){
+		}else if(csplevel == 2){
+			if(noncesource == true){
+				for(int i = 0;i<js.ejsfile.size();i++){
 					NonceSource  ns = new NonceSource();
 				}
 			}else{
@@ -80,8 +77,8 @@ public class jscript {
 				try {
 					copyfile();
 					System.out.println("finish");
-					Thread.sleep(10000);
-					ajs.getfilename("./csp");
+					Thread.sleep(1000);
+					js.getfilename("./csp");
 				} catch (IOException e) {
 					System.out.println(e);
 				} catch (InterruptedException e){
@@ -89,28 +86,19 @@ public class jscript {
 				}
 				//source hash script
 				Document doc;
-				for(int i = 0;i<ajs.htmlfile.size();i++){
-					jscript js = new jscript();
+				for(int i = 0;i<js.htmlfile.size();i++){
 					CSPSet csp = new CSPSet();
 					SourceHash sh = new SourceHash();
-					String filename= ajs.htmlfile.get(i);
+					String filename= js.htmlfile.get(i);
 					String filepat = "(.*/)(.*)\\.(.*)";
 					String directory = patternmatch(filename,filepat).group(1);
-					String beforedot = patternmatch(filename,filepat).group(2);
 					doc = sh.add_source_hash(filename);
 					String html = js.divideevent(doc, doc.toString(),directory);
-					doc = Jsoup.parse(html);
-					html = js.divide_styleid(doc,html,beforedot,directory);
-					doc = Jsoup.parse(html);
 					csp.setHashScript(sh.scripthashlist);
 					csp.setHashStyle(sh.stylehashlist);
-					doc = csp.setCSP(doc,ajs.csplevel);
+					doc = csp.setCSP(doc,csplevel);
 					System.out.println("\nlast result\n");
 					System.out.println(doc.toString());
-					File file = new File(filename);
-					FileWriter fw = new FileWriter(file);
-					fw.write(doc.toString());
-					fw.close();
 				}
 			}
 		}
@@ -140,15 +128,12 @@ public class jscript {
 		try{
 			String filepat = "(.*/)(.*)\\.(.*)";
 			String directory = patternmatch(filename,filepat).group(1);
-			String beforedot = patternmatch(filename,filepat).group(2);
 			File file = new File(filename);
 			Document doc = Jsoup.parse(file, "UTF-8");
 			String html = doc.toString();
 			html = dividescript(doc,html,directory);
 			doc = Jsoup.parse(html);
-			html = dividestyle(doc,html,beforedot,directory);
-			doc = Jsoup.parse(html);
-			html = divide_styleid(doc,html,beforedot,directory);
+			html = dividestyle(doc,html,patternmatch(filename,filepat).group(2));
 			doc = Jsoup.parse(html);
 			html = dividehref(doc,html);
 			doc = Jsoup.parse(html);
@@ -184,70 +169,22 @@ public class jscript {
 				String pat="(.*)<script().*src=(.*)>(.*)";
 			}else{
 				String mdhtml = dividescript(tmp.data(),filepath);
-				html = html.replaceFirst(Pattern.quote(tmp.toString()), mdhtml);
+				html = html.replaceAll(Pattern.quote(tmp.toString()), mdhtml);
 			}
 		}
 		return html;
 	}
 	
-	public String divide_styleid(Document doc,String html, String filename,String filepath){
-		Elements divstyle = doc.getElementsByAttribute("style");
-		// modify style attribute
-		String styletext = "";
-		for(int i=0;i < divstyle.size();i++){
-			Element tmp = divstyle.get(i);
-			//System.out.println(tmp.toString());
-			String stylepat = "(.*?)style=\"(.*?)\"(.*)";
-			String id = String.valueOf(eventid);
-			Matcher stylem = patternmatch(tmp.toString(),stylepat);
-			if(stylem != null){
-				String styleline= patternmatch(tmp.toString(),"(.*?)>(.*)").group(1)+">";
-				System.out.println(styleline+"\n");
-				String styleAttr = stylem.group(2);
-				String mdhtml = "";
-				String idpat = "<(.*?)id=\"(.*?)\"(.*?)>(.*)";
-				Matcher idm = patternmatch(styleline,idpat);
-				if(idm !=null){
-					mdhtml = stylem.group(1)+stylem.group(3);
-					id = idm.group(2);
-				}else{
-					mdhtml = stylem.group(1)+"id=\""+eventid+"\""+stylem.group(3)+"\n";
-					eventid++;
-				}
-			styletext += textStyleAttr(id,styleAttr)+"\n";
-			html = html.replaceFirst(Pattern.quote(styleline),mdhtml); 
-			}
-			
-		doc = Jsoup.parse(html);
-		}
-		if(!styletext.equals("")){
-			try{
-				File file = new File(filepath+filename+"styleattr.css");
-				FileWriter fw = new FileWriter(file);
-				fw.write(styletext);
-				fw.close();
-			}catch(IOException e){
-				System.out.println(e);
-			}
-			Elements header = doc.getElementsByTag("head");
-			header.append("<link href=\""+filename+"styleattr.css\" rel=\"stylesheet\" type=\"text/css\">");
-		}
-		
-		return doc.toString();
-	}
-	
-	public String dividestyle(Document doc,String html,String filename,String filepath){
+	public String dividestyle(Document doc,String html,String filename){
 		Elements style = doc.getElementsByTag("style");
 		for(int i=0; i< style.size();i++){
 			Element tmp = style.get(i);
 			//System.out.println(tmp.toString());
 			if(!tmp.toString().contains("src=")){
-				String mdhtml = dividestyle(tmp.data(),filepath);
-				html = html.replaceFirst(Pattern.quote(tmp.toString()), mdhtml);
+				String mdhtml = dividestyle(tmp.data());
+				html = html.replaceAll(Pattern.quote(tmp.toString()), mdhtml);
 			}
 		}
-		return html;
-		/*
 		Elements divstyle = doc.getElementsByAttribute("style");
 		// modify style attribute
 		String styletext = "";
@@ -272,14 +209,14 @@ public class jscript {
 					eventid++;
 				}
 			styletext += textStyleAttr(id,styleAttr)+"\n";
-			html = html.replaceFirst(Pattern.quote(styleline),mdhtml); 
+			html = html.replaceAll(Pattern.quote(styleline),mdhtml); 
 			}
 			
 		doc = Jsoup.parse(html);
 		}
 		if(!styletext.equals("")){
 			try{
-				File file = new File(filepath+filename+"styleattr.css");
+				File file = new File("./csp/"+filename+"styleattr.css");
 				FileWriter fw = new FileWriter(file);
 				fw.write(styletext);
 				fw.close();
@@ -290,8 +227,8 @@ public class jscript {
 			header.append("<link href=\""+filename+"styleattr.css\" rel=\"stylesheet\" type=\"text/css\">");
 		}
 		
-	*/
-		//return doc.toString();
+		
+		return doc.toString();
 	}
 	
 	public String dividehref(Document doc,String html){
@@ -311,14 +248,14 @@ public class jscript {
 								String script = m.group(2);
 								Matcher onclickm = patternmatch(m.group(1)+"\"\""+m.group(3),onclickpat);
 								//System.out.println(onclickm.group());
-								html = html.replaceFirst(Pattern.quote(m.group()), onclickm.group(1)+"onclick=\""+onclickm.group(2)+";"+script+"\""+onclickm.group(3));
+								html = html.replaceAll(Pattern.quote(m.group()), onclickm.group(1)+"onclick=\""+onclickm.group(2)+";"+script+"\""+onclickm.group(3));
 							/*pattern <a href="javascript:(javascript)void(0)></a>*/
 							}else{
-								html = html.replaceFirst(Pattern.quote(m.group()), m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
+								html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
 							}
 						}else{
 							//System.out.println(m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
-							html = html.replaceFirst(Pattern.quote(m.group()), m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
+							html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
 							//System.out.println("test print\n");
 						}
 					}
@@ -340,12 +277,12 @@ public class jscript {
 			}
 			
 			for(String key : eventhandler.keySet()){
-				System.out.println(key);
 				Elements evhand = doc.getElementsByAttribute(key);
 				for(int i=0;i<evhand.size();i++){
 					String evid="";
 					Element tmp = evhand.get(i);
 					Boolean preventevent = false;
+					//System.out.println(tmp.toString());
 					String pat = "(.*)"+key+"=\"(.*?)\"(.*)";
 					String patid = "(.*)id=\"(.*?)\"(.*)";
 					Matcher m = patternmatch(tmp.toString(),pat);
@@ -354,18 +291,18 @@ public class jscript {
 					if(m.group(2).contains("void(0)")){
 						preventevent = true;
 						String rmvoid = tmp.toString().replace("void(0)", "");
-						html = html.replaceFirst(Pattern.quote(tmp.toString()), rmvoid);
+						html = html.replaceAll(Pattern.quote(tmp.toString()), rmvoid);
 						m= patternmatch(rmvoid,pat);
 						System.out.println(m.group());
 						script = m.group(2);
 					}
 					if(mid == null){
 						evid = String.valueOf(eventid);
-						html = html.replaceFirst(Pattern.quote(m.group()), m.group(1)+"id=\""+eventid+"\""+m.group(3));
+						html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+"id=\""+eventid+"\""+m.group(3));
 						eventid++;
 					}else{
 						evid = mid.group(2);
-						html = html.replaceFirst(Pattern.quote(m.group()), m.group(1)+m.group(3));
+						html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+m.group(3));
 					}
 					String template="";
 					if(preventevent){
@@ -386,7 +323,7 @@ public class jscript {
 					Matcher m = patternmatch(tmp.toString(),pat);
 					String script = m.group(2);
 					String template = loadevent(script,key);
-					html = html.replaceFirst(Pattern.quote(m.group()), m.group(1)+m.group(3));
+					html = html.replaceAll(Pattern.quote(m.group()), m.group(1)+m.group(3));
 					//System.out.println(template);
 					fw.write(template);
 					flag = 1;
@@ -421,7 +358,7 @@ public class jscript {
 	 * 
 	 * @param fw writefile
 	 */
-	public void writeheader(FileWriter fw){
+	public static void writeheader(FileWriter fw){
 		try{
 			for(int i=0;i < header.size();i++){
 				fw.write(header.get(i)+"\n");
@@ -436,7 +373,7 @@ public class jscript {
 	 * write after </head> part
 	 * @param fw
 	 */
-	public void writebody(FileWriter fw){
+	public static void writebody(FileWriter fw){
 		try{
 			for(int i=0;i < body.size();i++){
 				fw.write(body.get(i)+"\n");
@@ -466,7 +403,7 @@ public class jscript {
 	}
 	
 	/*divide file from html(now only Javascript)*/
-	public String dividescript(String text,String filepath){
+	public static String dividescript(String text,String filepath){
 		//System.out.println(text);
 		/*write file*/
 		String mdhtml="";
@@ -488,10 +425,10 @@ public class jscript {
 		return mdhtml;
 	}
 	
-	public String dividestyle(String text,String path){
+	public static String dividestyle(String text){
 		String mdhtml = "";
 		try{
-			File file = new File(path+stylefilename+".css");
+			File file = new File("./csp/"+stylefilename+".css");
 			FileWriter fw = new FileWriter(file);
 			fw.write(text);
 			fw.close();
@@ -506,7 +443,7 @@ public class jscript {
 	public String textStyleAttr(String id,String style){
 		return "#"+id+" { " +style+" }";
 	}
-	public String tempevent(String id,String script,String key){
+	public static String tempevent(String id,String script,String key){
 		String templete = "var ev"+eventname+" = function() {\n"
 				+ " var div = document.getElementById(\""+id+"\");\n"
 				+ "	var popup = function () { \n"
@@ -546,7 +483,7 @@ public class jscript {
 		}
 	}
 	
-	public String loadevent(String script,String key){
+	public static String loadevent(String script,String key){
 		String templete ="var ev"+eventname+" = function(){ \n"+script+";\n};\n"
 				+ "window.addEventListener(\"load\",ev"+eventname+",false);\n";
 		eventname++;
@@ -554,7 +491,7 @@ public class jscript {
 	}
 	
 	public static void copyfile() throws IOException{
-		String[] command = {"/bin/sh", "-c","cp -r ./hyouka/* ./csp"};
+		String[] command = {"/bin/sh", "-c","cp -r ./test/* ./csp"};
 		Runtime.getRuntime().exec("mkdir csp");
 		Runtime.getRuntime().exec(command);
 		System.out.println("cp command");

@@ -8,7 +8,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-//import org.mozilla.javascript.*;
+import org.mozilla.javascript.*;
 
 // only support ejs
 
