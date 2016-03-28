@@ -44,7 +44,7 @@ public class SourceHash {
 		if(!scripthashlist.isEmpty()){
 			for(int i = 0;i < scripthashlist.size();i++){	
 				sb.append("'");
-				System.out.println(scripthashlist.get(i));
+				//System.out.println(scripthashlist.get(i));
 				sb.append(scripthashlist.get(i));
 				sb.append("' ");
 			}
@@ -60,15 +60,20 @@ public class SourceHash {
 	public ArrayList<String> source_hash(Document doc,String tagname){
 		ArrayList<String> hashlist = new ArrayList<String>();
 		Elements ele = doc.getElementsByTag(tagname);
+		System.out.println(ele.toString());
 		for(int i =0;i<ele.size();i++){
 			Element script = ele.get(i);
-			if(!script.toString().contains("src")){
+			String pat = "(.*)<"+tagname+"(.*?)>(.*)";
+			Matcher tm = Pattern.compile(pat).matcher(script.toString());
+			tm.find();
+			if(!tm.group(2).contains("src")){
 				String source = script.toString();
 				String sourcepat = "<"+tagname+".*?>([\\s\\S]*)</"+tagname+">";
 				Pattern p = Pattern.compile(sourcepat);
 				Matcher m = p.matcher(source);
 				if(m.find()){
 					String hash = calc_hash(m.group(1),"sha-256");
+					System.out.println(hash);
 					hashlist.add("sha256-"+hash);
 				}
 			}
