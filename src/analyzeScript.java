@@ -4,8 +4,11 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import analyze.js.*;
 
 
 public class analyzeScript {
@@ -13,6 +16,13 @@ public class analyzeScript {
 	public static char jsname ='a';
 	public static char funcname ='a';
 	public static char varname = 'a';
+	public static char idname = 'a';
+	public static char eventname = 'a';
+	public static HashMap<String,String> eventh;
+	
+	analyzeScript(){
+		init();
+	}
 	
 	public static void main(String args[]){
 		analyzeScript as = new analyzeScript();
@@ -28,9 +38,92 @@ public class analyzeScript {
 		if(!mdset.equals(set)){
 			as.overWrite(mdset,"./csp/set.js");
 		}
+		as.check_docwrite("./csp/cs.js");
 		
 	}
 	
+	public void init(){
+		eventh = new HashMap<String,String>();
+		eventh.put("onclick", "click");
+	}
+	
+	public void check_docwrite(String filename){
+		ArrayList<String> method = new ArrayList<String>(Search_method.search_method("document.write", filename));
+		ArrayList<String> text = new ArrayList<String>(Search_method.find_text("document.write", fileReader(filename)));
+		System.out.println("check");
+		for(int i=0;i<text.size();i++){
+			System.out.println("method:"+method.get(i));
+			System.out.println("text:"+text.get(i));
+			textanalyze(text.get(i));
+		}
+		//String pat = "([\\s\\S]*?)document\\.(write|writeln)\\(([\\s\\S]*)\\);[\\s\\S]*";
+		//Matcher m = Pattern.compile(pat).matcher(source);
+		//while(m.find()){
+		//	System.out.println(m.group());
+		//	System.out.println(m.group(3));
+		//}
+		
+	}
+	/**
+	 * avoid inline script such as document.write('<div onclick="">aa</div>');
+	 * 
+	 * @param text document.write(text);
+	 */
+	public void textanalyze(String text){
+		// if text has <script>
+		if(text.contains("<script>")){
+			String pat = "([\\s\\S]*)<script>([\\s\\S]*)</script>([\\s\\S]*)";
+			Matcher m = Pattern.compile(pat).matcher(text);
+			if(m.find()){
+				System.out.println(m.group(2));
+				String change_text = m.group(1)+"<script src=\"as"+jsname+".js\"></script>"+m.group(3);
+				jsname++;
+				System.out.println(text);
+				System.out.println(change_text);
+			}
+		}
+		// if text has event handler
+		for(String key : eventh.keySet()){
+			if(text.contains(key)){
+				String id="";
+				int idflag=0;
+				if(text.contains("id")){
+					String patid = "(.*)id=[\"\']([\\s\\S]*?)[\"\']([\\s\\S]*)";
+					Matcher m = Pattern.compile(patid).matcher(text);
+					System.out.println(m.find());
+					if(m.find()){
+						id = m.group(2);
+						idflag=1;
+					}
+					
+				}else{
+					id = String.valueOf(idname);
+					idname++;
+				}
+				
+				String patscrpt = "([\\s\\S]*?)"+key+"=[\"\']([\\s\\S]*?)[\"\']([\\s\\S]*)";
+				Matcher mscript = Pattern.compile(patscrpt).matcher(text);
+				String script="";
+				if(mscript.find()){
+					script=mscript.group(2);
+					System.out.println(script);
+				}
+				String temp = tempevent(id,script,key);
+				System.out.println("\nmodify event handler");
+				if(idflag == 0){
+					// event handler don't have id
+					String change_text = mscript.group(1)+"id=\""+id+"\""+mscript.group(3);
+					System.out.println(change_text);
+					System.out.println(text);
+					
+				}else{
+					// event handler have id
+					
+				}
+			}
+		}
+		
+	}
 	public void analyzeScript(String filename){
 		String source = fileReader(filename);
 		System.out.println("start createScript");
@@ -141,6 +234,17 @@ public class analyzeScript {
 		
 		return temp;
 	};
+	
+	public static String tempevent(String id,String script,String key){
+		String templete = "var ev"+eventname+" = function() {\n"
+				+ " var div = document.getElementById(\""+id+"\");\n"
+				+ "	var popup = function () { \n"
+				+ script +"; };\n div.addEventListener(\""+eventh.get(key)+"\",popup,false); };\n"
+				+ "window.addEventListener(\"load\",ev"+eventname+",false);\n";
+		eventname++;
+		
+		return templete;
+	}
 	
 	public void overWrite(String text,String filename){
 		File file = new File(filename);

@@ -1,11 +1,8 @@
-var random = as();
-function as(){
-	alert('testforcreateelement');
+function test(){
+	console.log('test function event');
 }
-var ga = document.createElement('script');
-ga.type ='text/javascript';
-ga.src = "http://133.68.18.198/alert.js";
 
-var s = document.getElementsByTagName('script')[0];
-s.parentNode.insertBefore(ga,s);
+document.write("<div>a</div>\n <script>console.log('123');</script>");
+document.write("<div onclick='test()'>aaa</div>");
+
 
