@@ -1,0 +1,13 @@
+var obj = { a:20, b:30 };
+var x = "a";
+console.log("test");
+eval(fnstring+"()");
+//window[fnstring]();
+eval("var result = obj." + x );
+//var result = obj[x];
+console.log(result);
+eval('var tmp = {"hoge":"piyo"}');
+//var temp = JSON.stringify('{"hoge":"piyo"}');
+//var tmp;
+//window.tmp=JSON.parse(temp);
+console.log(tmp);
