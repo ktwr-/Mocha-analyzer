@@ -28,21 +28,21 @@ public class analyzeScript {
 	
 	public static void main(String args[]){
 		analyzeScript as = new analyzeScript();
-		/*
+		
 		String source = as.fileReader("./csp/cs.js");
-		System.out.println(source);
+		//System.out.println(source);
 		String mdjs = as.createScript(source);
 		if(!mdjs.equals(source)){
 			as.overWrite(mdjs,"./csp/cs.js");
 		}
 		String set = as.fileReader("./csp/set.js");
-		System.out.println(set);
+		//System.out.println(set);
 		String mdset = as.setIntTime(set);
 		if(!mdset.equals(set)){
 			as.overWrite(mdset,"./csp/set.js");
 		}
 		as.check_docwrite("./csp/cs.js");
-		*/
+		
 		as.check_event_handler("./test/test.js");
 		
 	}
@@ -52,12 +52,51 @@ public class analyzeScript {
 		eventh.put("onclick", "click");
 	}
 	
-	public void check_docwrite(String filename){
+	public void analyzeScript(String filename){
+		String source = fileReader(filename);
+		String original = new String(source);
+		System.out.println("start createScript");
+		String mdjs = createScript(source);
+		if(!mdjs.equals(source)){
+			overWrite(mdjs,filename);
+			source = mdjs;
+		}
+		System.out.println("finish createScript");
+		String mdset = setIntTime(source);
+		if(!mdset.equals(source)){
+			overWrite(mdset,filename);
+			source = mdset;
+		}
+		String mddocwrite = check_docwrite(filename);
+		if(!mddocwrite.equals(source)){
+			overWrite(mddocwrite,filename);
+			source = mddocwrite;
+		}
+		String mdevhandle = check_event_handler(filename);
+		if(!mdevhandle.equals(source)){
+			overWrite(mdevhandle,filename);
+			source = mdevhandle;
+		}
+		Modify_eval me = new Modify_eval();
+		String mdev = me.extrace_evaltext(source,filename);
+		if(!mdev.equals(source)){
+			overWrite(mdev,filename);
+			source = mdev;
+		}
+		/*if(!source.equals(original)){
+			System.out.println("change script\n\n");
+			overWrite(source,filename);
+		}*/
+		
+		
+	}
+	
+	public String check_docwrite(String filename){
 		ArrayList<String> method = new ArrayList<String>(Search_method.search_method("document.write", filename));
 		ArrayList<String> text = new ArrayList<String>(Search_method.find_text("document.write", fileReader(filename)));
 		String file = fileReader(filename);
-		System.out.println("check");
-		System.out.println(file);
+		//System.out.println("check");
+		//System.out.println(file);
 		String filepat =  "(.*/)(.*)\\.(.*)";
 		String directory = patternmatch(filename,filepat).group(1);
 		String beforedot = patternmatch(filename,filepat).group(2);
@@ -65,6 +104,13 @@ public class analyzeScript {
 			System.out.println("method:"+method.get(i));
 			System.out.println("text:"+text.get(i));
 			String temp = textanalyze(text.get(i),directory,beforedot);
+			if(temp.contains("event_handler_CSP_apply")){
+				String[] split = temp.split("event_handler_CSP_apply");
+				file = split[1]+"\n"+file;
+				String js_write = split[1];
+				temp = split[0];
+			}
+			System.out.println("aaa:"+temp);
 			file = file.replaceAll(Pattern.quote(text.get(i)), temp);
 			System.out.println("temp:\n"+ file);
 		}
@@ -74,6 +120,8 @@ public class analyzeScript {
 		//	System.out.println(m.group());
 		//	System.out.println(m.group(3));
 		//}
+		//System.out.println("last:\n"+file);
+		return file;
 		
 	}
 	/**
@@ -129,16 +177,16 @@ public class analyzeScript {
 				if(idflag == 0){
 					// event handler don't have id
 					String change_text = mscript.group(1)+"id=\""+id+"\""+mscript.group(3);
-					System.out.println(change_text);
-					System.out.println(temp);
-					return change_text+"\n"+text;
+					System.out.println("change_text:"+change_text);
+					System.out.println("text:"+temp);
+					return change_text+"event_handler_CSP_apply"+temp;
 					
 				}else{
 					// event handler have id
 					String change_text = mscript.group(1)+mscript.group(3);
-					System.out.println(change_text);
-					System.out.println(text);
-					return change_text+"\n"+temp;
+					System.out.println("change_text:"+change_text);
+					System.out.println("text:"+temp);
+					return change_text+"event_handler_CSP_apply"+temp;
 					
 				}
 			}
@@ -152,24 +200,29 @@ public class analyzeScript {
 	 * @param filename filename which you want to analyze 
 	 */
 	
-	public void check_event_handler(String filename){
+	public String check_event_handler(String filename){
 		String source = fileReader(filename);
 		ArrayList<String> innerHTML = new ArrayList<String>(Search_method.find_text_equals("innerHTML", source));
 		ArrayList<String> outerHTML = new ArrayList<String>(Search_method.find_text_equals("outerHTML", source));
 		ArrayList<String> modify_innerHTML = new ArrayList<String>(check_event_handler_method("innerHTML",innerHTML));
+		System.out.println(innerHTML.size());
+		System.out.println(modify_innerHTML.size());
+		if(innerHTML.size() == modify_innerHTML.size()){
 		for(int i=0;i<innerHTML.size();i++){
 			if(!innerHTML.get(i).equals(modify_innerHTML.get(i))){
 				source = source.replaceAll(Pattern.quote(innerHTML.get(i)), modify_innerHTML.get(i));
 			}
-		}
+		}}
 		ArrayList<String> modify_outerHTML = new ArrayList<String>(check_event_handler_method("innerHTML",innerHTML));
 		check_event_handler_method("outerHTML",outerHTML);
+		if(outerHTML.size() == modify_outerHTML.size()){
 		for(int i=0;i<outerHTML.size();i++){
 			if(!outerHTML.get(i).equals(modify_outerHTML.get(i))){
 				source = source.replaceAll(Pattern.quote(outerHTML.get(i)), modify_outerHTML.get(i));
 			}
-		}
+		}}
 		System.out.println("modify\n"+source);
+		return source;
 		
 		
 		
@@ -187,7 +240,7 @@ public class analyzeScript {
 				String text = m.group(4);
 				for(String key: eventh.keySet()){
 					// if text such as " <div> ~~~ </div> " contains event handler
-					if(text.contains(text)){
+					if(text.contains(key)){
 						//event handler
 						System.out.println("event handler check in innerHTML or outerHTML");
 						String id="";
@@ -195,7 +248,6 @@ public class analyzeScript {
 						if(text.contains("id")){
 							String patid = "(.*)id=[\"\']([\\s\\S]*?)[\"\']([\\s\\S]*)";
 							Matcher mid = Pattern.compile(patid).matcher(text);
-							System.out.println(m.find());
 							if(m.find()){
 								id = m.group(2);
 								idflag=1;
@@ -205,7 +257,6 @@ public class analyzeScript {
 							id = String.valueOf(idname);
 							idname++;
 						}	
-					
 						String patscrpt = "([\\s\\S]*?)"+key+"=[\"\']([\\s\\S]*?)[\"\']([\\s\\S]*)";
 						Matcher mscript = Pattern.compile(patscrpt).matcher(text);
 						String script="";
@@ -240,23 +291,10 @@ public class analyzeScript {
 			return ret_method;
 				// if innerHTML takes variable as an argument
 		}
-		return null;
+		return ret_method;
 		
 	}
 	
-	public void analyzeScript(String filename){
-		String source = fileReader(filename);
-		System.out.println("start createScript");
-		String mdjs = createScript(source);
-		if(!mdjs.equals(source)){
-			overWrite(mdjs,filename);
-		}
-		System.out.println("finish createScript");
-		String mdset = setIntTime(source);
-		if(!mdset.equals(source)){
-			overWrite(mdset,filename);
-		}
-	}
 	
 	public String fileReader(String filename){
 		StringBuilder sb = new StringBuilder("");
@@ -313,7 +351,12 @@ public class analyzeScript {
 			
 		return temp;
 	}
-	
+	/**
+	 * var t = document.createElement(script);
+	 * t.src or t.text
+	 * @param source
+	 * @return 
+	 */
 	public String createScript(String source){
 		String temp=source;
 		Matcher var;

@@ -24,7 +24,18 @@ public class modify_ajax {
 		aj.search_ajax(source);
 	}
 	
-	public void search_ajax(String source){
+	public HashSet<String> extrace_basedomain(HashSet<String> url){
+		HashSet<String> base = new HashSet<String>();
+		ArrayList<String> temp = new ArrayList<String>(url);
+		for(int i=0;i<temp.size();i++){
+			Matcher m = Pattern.compile("(htt[p|ps]://.*?/)(.*)\\.(.*)").matcher(temp.get(i));
+			m.find();
+			base.add(m.group(1));
+		}
+		return base;
+	}
+	
+	public HashSet<String> search_ajax(String source){
 		Stack<String> stparent = new Stack<String>();
 		//ArrayList<String> text = new ArrayList<String>();
 		HashSet<String> text = new HashSet<String>();
@@ -50,10 +61,10 @@ public class modify_ajax {
 			text.add(ajax_string+source.substring(start, end));
 			url.add(search_url(source.substring(start,end)));
 		}
-		for(String key: url){
-			System.out.println("url = "+key);
-		}
-		match_url(url,source);
+		//for(String key: url){
+		//	System.out.println("url = "+key);
+		//}
+		return match_url(url,source);
 	}
 	
 	private HashSet<String> match_url(HashSet<String> url,String source){
@@ -89,14 +100,20 @@ public class modify_ajax {
 					keytmp = stmp;
 				}
 				
-				System.out.println(stmp);
+				//System.out.println(stmp);
 				Matcher http = Pattern.compile("(http.*\\.php)[\\s\\S]*").matcher(stmp);
 
 				if(http.find()){
-					System.out.println("url is "+http.group(1).replaceAll("[\"\']", ""));
+					String httpurl = http.group(1).replaceAll("[\"\']", "");
+	//				System.out.println("url is "+httpurl);
+					tmp.add(httpurl);
 				}
 			}
 		}
+		for(String key:tmp){
+			System.out.println(key);
+		}
+		
 		return tmp;
 	}
 	
@@ -123,7 +140,7 @@ public class modify_ajax {
 		return tmp;
 	}
 	
-	public String fileReader(String filename){
+	public static String fileReader(String filename){
 		StringBuilder sb = new StringBuilder("");
 		try{
 			@SuppressWarnings("resource")
@@ -134,7 +151,6 @@ public class modify_ajax {
 			}
 		}catch(Exception e){
 			System.err.println("No such file or directory");
-			System.exit(0);
 		}
 		return sb.toString();
 	}
