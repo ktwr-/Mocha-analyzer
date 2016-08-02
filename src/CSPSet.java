@@ -68,9 +68,9 @@ public class CSPSet {
 		}
 		if(bscdomain){
 			for(int i=0; i < scriptdomain.size(); i++){
-				sb.append(quote);
-				sb.append(scriptdomain.get(i));
-				sb.append(quote);
+				//sb.append(quote);
+				sb.append(" "+scriptdomain.get(i)+" ");
+				//sb.append(quote);
 			}
 		}
 		sb.append(coron);
@@ -215,18 +215,29 @@ public class CSPSet {
 	}
 	
 	//for csp level1
+	/**
+	 * 
+	 * @param tagname
+	 * @param doc htmlfile
+	 * @return arrayList includes domain name such as http://test.jp/
+	 */
 	public ArrayList<String> search_domain_for1(String tagname, Document doc){
 		Elements ele=doc.getElementsByTag(tagname);
 		ArrayList<String> domain = new ArrayList<String>();
 		for(int i=0;i<ele.size();i++){
 			Element tmp = ele.get(i);
-			if(tmp.toString().contains("http")){
+			if(tmp.toString().contains("http") || tmp.toString().contains("//")){
 				bstdomain=true;
-				String pat = "(.*)(https?://.*?)(/.*\\."+tagmatch.get(tagname)+")\"(.*)";
-				Matcher m = Pattern.compile(pat).matcher(tmp.toString());
-				if(m.find()){
-					System.out.println(m.group(2));
-					domain.add(m.group(2));
+				String pat1 = "(.*)(https?://.*?)(/.*\\."+tagmatch.get(tagname)+")\"(.*)";
+				String pat2 = "src(.*)//(.*?)(/.*\\."+tagmatch.get(tagname)+")";
+				Matcher mat1 = Pattern.compile(pat1).matcher(tmp.toString());
+				Matcher mat2 = Pattern.compile(pat2).matcher(tmp.toString());
+				if(mat1.find()){
+					System.out.println(mat1.group(2));
+					domain.add(mat1.group(2));
+				}else if(mat2.find()){
+					System.out.println(mat2.group(1));
+					domain.add("http://"+mat2.group(2));
 				}
 			}
 		}
