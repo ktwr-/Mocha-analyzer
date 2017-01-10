@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.regex.Pattern;
 
+
+// import package for using Jsoup
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -17,30 +19,41 @@ import org.jsoup.select.Elements;
 
 import java.util.regex.Matcher;
 
+// import package for using apktool
+import brut.apktool.*;
+
 
 
 public class jscript {
 	
-	static ArrayList<String> removetag = new ArrayList<String>();
-	static ArrayList<String> fileextension = new ArrayList<String>();
-	static HashMap<String,String> eventhandler = new HashMap<String,String>();
-	static HashMap<String,String> eventbody = new HashMap<String,String>();
-	ArrayList<String> htmlfile = new ArrayList<String>();
-	ArrayList<String> jsfile = new ArrayList<String>();
-	ArrayList<String> ejsfile = new ArrayList<String>();
+	static ArrayList<String> remove_tag = new ArrayList<String>();
+	static ArrayList<String> file_extension = new ArrayList<String>();
+	static HashMap<String,String> eventhandler = new HashMap<String,String>(){
+		{
+			put("onclick","click");
+			put("ondblclick", "dblclick");
+		}
+	};
+	static HashMap<String,String> eventbody = new HashMap<String,String>(){
+		{
+			put("onload","load");
+		}
+	};
+	ArrayList<String> html_file = new ArrayList<String>();
+	ArrayList<String> js_file = new ArrayList<String>();
+	ArrayList<String> ejs_file = new ArrayList<String>();
 	ArrayList<String> header;
 	ArrayList<String> body;
 	char jsfilename = 'a';
 	char stylefilename = 'a';
 	char eventid = 'a';
 	char eventname= 'a';
-	Boolean baJS = false;
 	int csplevel = 1;
+	Boolean baJS = false;
 	Boolean noncesource =false;
 	
 	public static void main(String args[]) throws IOException{
 		jscript ajs = new jscript();
-		ajs.inline_init();
 		if(ajs.csplevel == 1){
 			analyzeScript aS = new analyzeScript();
 			
@@ -55,28 +68,27 @@ public class jscript {
 				System.out.println(e);
 			}
 			
-			//js.htmlanalyze("./csp/test.html");
-			for(int i=0;i<ajs.htmlfile.size();i++){
-				System.out.println(ajs.htmlfile.get(i));
+			for(int i=0;i<ajs.html_file.size();i++){
+				System.out.println(ajs.html_file.get(i));
 			}
 			
-			for(int i=0;i<ajs.htmlfile.size();i++){
+			for(int i=0;i<ajs.html_file.size();i++){
 				jscript js = new jscript();
-				js.htmlanalyze(ajs.htmlfile.get(i));
+				js.htmlanalyze(ajs.html_file.get(i));
 			}
-			for(int i=0;i<ajs.jsfile.size();i++){
-				System.out.println("file:"+ajs.jsfile.get(i));
-				if(!ajs.jsfile.get(i).contains("min.js") && !ajs.jsfile.get(i).contains("leaflet") && !ajs.jsfile.get(i).contains("data.js")){
-					aS.analyzeScript(ajs.jsfile.get(i));
+			for(int i=0;i<ajs.js_file.size();i++){
+				System.out.println("file:"+ajs.js_file.get(i));
+				if(!ajs.js_file.get(i).contains("min.js") && !ajs.js_file.get(i).contains("leaflet") && !ajs.js_file.get(i).contains("data.js")){
+					aS.analyzeScript(ajs.js_file.get(i));
 				}
 			}
-			for(int i=0;i<ajs.jsfile.size();i++){
-				System.out.println(ajs.jsfile.get(i));
+			for(int i=0;i<ajs.js_file.size();i++){
+				System.out.println(ajs.js_file.get(i));
 			}
 			
 		}else if(ajs.csplevel == 2){
 			if(ajs.noncesource == true){
-				for(int i = 0;i<ajs.ejsfile.size();i++){
+				for(int i = 0;i<ajs.ejs_file.size();i++){
 					NonceSource  ns = new NonceSource();
 				}
 			}else{
@@ -93,21 +105,21 @@ public class jscript {
 				}
 				//source hash script
 				Document doc;
-				for(int i = 0;i<ajs.htmlfile.size();i++){
+				for(int i = 0;i<ajs.html_file.size();i++){
 					jscript js = new jscript();
 					CSPSet csp = new CSPSet();
 					SourceHash sh = new SourceHash();
-					String filename= ajs.htmlfile.get(i);
+					String filename= ajs.html_file.get(i);
 					String filepat = "(.*/)(.*)\\.(.*)";
 					String directory = patternmatch(filename,filepat).group(1);
 					String beforedot = patternmatch(filename,filepat).group(2);
 					doc = sh.add_source_hash(filename);
 					String html = js.divideevent(doc, doc.toString(),directory);
 					doc = Jsoup.parse(html);
-					html = js.divide_styleid(doc,html,beforedot,directory);
+					doc = js.divide_styleid(doc,beforedot,directory);
 					doc = Jsoup.parse(html);
-					csp.setHashScript(sh.scripthashlist);
-					csp.setHashStyle(sh.stylehashlist);
+					csp.setHashScript(sh.script_hashlist);
+					csp.setHashStyle(sh.style_hashlist);
 					doc = csp.setCSP(doc,ajs.csplevel,directory);
 					System.out.println("\nlast result\n");
 					System.out.println(doc.toString());
@@ -120,20 +132,12 @@ public class jscript {
 		}
 	}
 	
-	public void inline_init(){
-		//correspondence table of event handler
-		eventhandler.put("onclick", "click");
-		eventhandler.put("ondblclick", "dblclick");
-		eventbody.put("onload", "load");
-		
-		baJS = false;
-	}
-	
 	public Document insertCSP(Document doc){
 		Elements header = doc.getElementsByTag("head");
 		header.append("<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *; script-src 'self'; object-src 'self'; style-src 'self';\">");
 		return doc;
 	}
+	
 	
 	
 	
@@ -144,15 +148,16 @@ public class jscript {
 		try{
 			String filepat = "(.*/)(.*)\\.(.*)";
 			String directory = patternmatch(filename,filepat).group(1);
-			String beforedot = patternmatch(filename,filepat).group(2);
+			String before_dot = patternmatch(filename,filepat).group(2);
 			File file = new File(filename);
 			Document doc = Jsoup.parse(file, "UTF-8");
 			String html = doc.toString();
-			html = dividescript(doc,html,beforedot,directory);
-			doc = Jsoup.parse(html);
-			html = dividestyle(doc,html,beforedot,directory);
-			doc = Jsoup.parse(html);
-			html = divide_styleid(doc,html,beforedot,directory);
+			// divide javascript from html file
+			doc = divide_script(doc,before_dot,directory);
+			// divide CSS from html file
+			doc = dividestyle(doc,before_dot,directory);
+			// divide CSS which contains id from html file
+			doc = divide_styleid(doc,before_dot,directory);
 			doc = Jsoup.parse(html);
 			html = dividehref(doc,html);
 			doc = Jsoup.parse(html);
@@ -169,19 +174,16 @@ public class jscript {
 		}
 		
 	}
-	
-	public void jsanalyze(String filename){
-		try{
-			File file = new File(filename);
-			Document doc = Jsoup.parse(file, "UTF-8");
-			System.out.println(doc.toString());
-		}catch(IOException e){
-			System.out.println(e);
-		}
-	}
-	
-	public String dividescript(Document doc, String html,String beforedot,String filepath){
+	/**
+	 * 
+	 * @param doc
+	 * @param beforedot
+	 * @param filepath
+	 * @return
+	 */
+	public Document divide_script(Document doc, String beforedot,String filepath){
 		Elements script = doc.getElementsByTag("script");
+		String html = doc.toString();
 		for(int i=0;i < script.size();i++){
 			Element tmp = script.get(i);
 			System.out.println(tmp.toString());
@@ -189,15 +191,16 @@ public class jscript {
 			if(Pattern.compile(pat).matcher(tmp.toString()).find()){
 				System.out.println("src");
 			}else{
-				String mdhtml = dividescript(tmp.data(),beforedot,filepath);
-				html = html.replaceFirst(Pattern.quote(tmp.toString()), mdhtml);
+				String md_html = divide_script_from_file(tmp.data(),beforedot,filepath);
+				html = html.replaceFirst(Pattern.quote(tmp.toString()), md_html);
 			}
 		}
-		return html;
+		return Jsoup.parse(html);
 	}
 	
-	public String divide_styleid(Document doc,String html, String filename,String filepath){
+	public Document divide_styleid(Document doc, String filename,String filepath){
 		Elements divstyle = doc.getElementsByAttribute("style");
+		String html = doc.toString();
 		// modify style attribute
 		String styletext = "";
 		for(int i=0;i < divstyle.size();i++){
@@ -239,20 +242,20 @@ public class jscript {
 			header.append("<link href=\""+filename+"styleattr.css\" rel=\"stylesheet\" type=\"text/css\">");
 		}
 		
-		return doc.toString();
+		return doc;
 	}
 	
-	public String dividestyle(Document doc,String html,String filename,String filepath){
+	public Document dividestyle(Document doc,String filename,String filepath){
 		Elements style = doc.getElementsByTag("style");
+		String html = doc.toString();
 		for(int i=0; i< style.size();i++){
 			Element tmp = style.get(i);
-			//System.out.println(tmp.toString());
 			if(!tmp.toString().contains("src=")){
-				String mdhtml = dividestyle(tmp.data(),filename,filepath);
+				String mdhtml = divide_style_from_file(tmp.data(),filename,filepath);
 				html = html.replaceFirst(Pattern.quote(tmp.toString()), mdhtml);
 			}
 		}
-		return html;
+		return doc;
 	}
 	
 	public String dividehref(Document doc,String html){
@@ -263,15 +266,13 @@ public class jscript {
 					String pat="(.*)\"javascript:(.*?)\"(.*)";
 					Matcher m = patternmatch(tmp.toString(),pat);
 					if(m != null){
-						//System.out.println(m.group(2));
 						if(m.group(2).contains("void(0)")){
 							baJS = true;
-							/*pattern <a href="javascript:(javascript)void(0)" onclick="(javascript)">test</a>*/
+							/* pattern example <a href="javascript:(javascript)void(0)" onclick="(javascript)">test</a>*/
 							if(tmp.toString().contains("onclick")){
 								String onclickpat = "(.*?)onclick=\"(.*?)\"(.*)";
 								String script = m.group(2);
 								Matcher onclickm = patternmatch(m.group(1)+"\"\""+m.group(3),onclickpat);
-								//System.out.println(onclickm.group());
 								html = html.replaceFirst(Pattern.quote(m.group()), onclickm.group(1)+"onclick=\""+onclickm.group(2)+";"+script+"\""+onclickm.group(3));
 							/*pattern <a href="javascript:(javascript)void(0)></a>*/
 							}else{
@@ -280,7 +281,6 @@ public class jscript {
 						}else{
 							//System.out.println(m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
 							html = html.replaceFirst(Pattern.quote(m.group()), m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
-							//System.out.println("test print\n");
 						}
 					}
 						
@@ -365,55 +365,12 @@ public class jscript {
 		}
 		return doc.toString();
 	}
-	/**
-	 * modify setTimeout and setInterval if these contents conatins src="remote URI"
-	 * 
-	 * @param doc
-	 * @param js 
-	 * @return
-	 */
-	public String divideSetTI(Document doc,String js){
-		
-		return js;
-	}
 	
-	/**
-	 * write <html><head> ~ </head> part
-	 * 
-	 * @param fw writefile
-	 */
-	public void writeheader(FileWriter fw){
-		try{
-			for(int i=0;i < header.size();i++){
-				fw.write(header.get(i)+"\n");
-				System.out.println(header.get(i)+"\n");
-			}
-			fw.write("</head>\n");
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	/**
-	 * write after </head> part
-	 * @param fw
-	 */
-	public void writebody(FileWriter fw){
-		try{
-			for(int i=0;i < body.size();i++){
-				fw.write(body.get(i)+"\n");
-				System.out.println(body.get(i)+"\n");
-			}
-		}catch (IOException e){
-			System.out.println(e);
-		}
-	}
 	/**
 	 * 
 	 * @param str 		String which I want to analyze
 	 * @param pattern	analyze pattern
 	 * @return			return Matcher group
-	 * 
-	 * 
 	 */
 	public static Matcher patternmatch(String str,String pattern){
 		
@@ -426,8 +383,13 @@ public class jscript {
 		return null;
 	}
 	
-	/*divide file from html(now only Javascript)*/
-	public String dividescript(String text,String beforedot,String filepath){
+	/**
+	 * divide file from html(now only Javascript)
+	 * @param text
+	 * @param beforedot 	file name before dot. For example, if file name is test.js, befordot is test.
+	 * @param filepath		file path 
+	 * */
+	public String divide_script_from_file(String text,String beforedot,String filepath){
 		//System.out.println(text);
 		/*write file*/
 		String mdhtml="";
@@ -441,15 +403,12 @@ public class jscript {
 			jsfilename++;
 		}catch(IOException e){
 			System.out.println(e);
-			
 		}
-		
 		/*instead of divide, write like <script src="~~" ></script> text*/
-		
 		return mdhtml;
 	}
 	
-	public String dividestyle(String text,String beforedot,String path){
+	public String divide_style_from_file(String text,String beforedot,String path){
 		String mdhtml = "";
 		try{
 			File file = new File(path+beforedot+stylefilename+".css");
@@ -495,11 +454,11 @@ public class jscript {
 		for(int i=0;i<files.length;i++){
 			if(files[i].isFile()){
 				if(files[i].getName().contains(".html")){
-					htmlfile.add(files[i].toString());
+					html_file.add(files[i].toString());
 				}else if(files[i].getName().contains(".js")){
-					jsfile.add(files[i].toString());
+					js_file.add(files[i].toString());
 				}else if(files[i].getName().contains(".ejs")){
-					ejsfile.add(files[i].toString());
+					ejs_file.add(files[i].toString());
 				}
 			}else if(files[i].isDirectory()){
 				getfilename(files[i].toString());
@@ -521,9 +480,5 @@ public class jscript {
 		System.out.println("cp command");
 	}
 	
-	public static void reset() throws IOException{
-		Runtime.getRuntime().exec("rm -rf csp");
-		System.out.println("reset");
-	}
 	
 }

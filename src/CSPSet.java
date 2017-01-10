@@ -33,7 +33,14 @@ public class CSPSet {
 		bstdomain=false;
 		init();
 	}
-	
+	/**
+	 * This function sets policy directive into HTML file.
+	 * 
+	 * @param doc Document object of HTML file
+	 * @param csplevel version of CSP only correspondences version 1 and version 2
+	 * @param directory
+	 * @return
+	 */
 	public Document setCSP(Document doc,int csplevel,String directory){
 		System.out.println("setCSP start");
 		StringBuilder sb = new StringBuilder();
@@ -115,15 +122,6 @@ public class CSPSet {
 			//cs.add_path_matching(file);
 			try {
 				Document doc = Jsoup.parse(new File(file.get(0)),"UTF-8");
-				/*
-				ArrayList<String> js_in_html = new ArrayList<String>(cs.search_js_inhtml(doc,"./test/"));
-				ArrayList<String> js_in_html_url = new ArrayList<String>();
-				for(int i =0;i<js_in_html.size();i++){
-					modify_ajax md = new modify_ajax();
-					HashSet<String> temp = new HashSet<String>(md.search_ajax(md.fileReader(js_in_html.get(i))));
-					temp = new HashSet<String>(md.extrace_basedomain(temp));
-					js_in_html_url.addAll(new ArrayList<String>(temp));
-				}*/
 				ArrayList<String> js_in_html_url = new ArrayList<String>(cs.list_url_jsfile(doc,"./test/"));
 				for(int i=0;i<js_in_html_url.size();i++){
 					System.out.println(js_in_html_url.get(i));
@@ -194,6 +192,14 @@ public class CSPSet {
 	}
 	
 	// for csp level2
+	/**
+	 * This function searches domain(URL) for CSP ver 2.0
+	 * if domain is https://test.jp/a/test.html , it extracts https://test.jp and put it into ArrayList.
+	 * 
+	 * @param tagname script or style
+	 * @param doc
+	 * @return ArrayList which stores domains.
+	 */
 	public ArrayList<String> search_domain_for2(String tagname,Document doc){
 		Elements ele=doc.getElementsByTag(tagname);
 		ArrayList<String> domain = new ArrayList<String>();

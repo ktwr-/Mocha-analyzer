@@ -6,5 +6,7 @@
 	<classpathentry kind="lib" path="/home/takeuchi/Downloads/rhino1_7R5/js.jar"/>
 	<classpathentry kind="lib" path="/home/takeuchi/Documents/commons-codec-1.10/commons-codec-1.10.jar"/>
 	<classpathentry kind="lib" path="/home/takeuchi/Documents/AnalyzeJS.jar"/>
+	<classpathentry kind="lib" path="/home/takeuchi/Documents/Apktool/brut.apktool/apktool-cli/build/libs/apktool-cli.jar"/>
+	<classpathentry kind="lib" path="/home/takeuchi/apksigner/apksigner.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

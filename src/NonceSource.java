@@ -14,7 +14,7 @@ import org.mozilla.javascript.*;
 
 public class NonceSource {
 	
-	ArrayList<String> noncelist = new ArrayList<String>();
+	ArrayList<String> nonce_list = new ArrayList<String>();
 	NonceSource(){
 		
 	}
@@ -25,7 +25,7 @@ public class NonceSource {
 			Document doc = Jsoup.parse(file,"UTF-8");
 			
 			//nonce_random.add(noncerandom(source));
-			insertCSP(doc,noncelist);
+			insertCSP(doc,nonce_list);
 		}catch(IOException e){
 			System.out.println(e);
 		}
@@ -42,7 +42,7 @@ public class NonceSource {
 		for(int i=0;i<ele.size();i++){
 			Element script = ele.get(i);
 			String nonce = calculate_random(script.toString());
-			noncelist.add(nonce);
+			nonce_list.add(nonce);
 			//add nonce-hash
 			String replacehtml = script.toString().replaceAll(Pattern.quote("<script>"), "<script nonce=\""+nonce+"\">");
 			html = html.replaceAll(Pattern.quote(script.toString()), replacehtml);
