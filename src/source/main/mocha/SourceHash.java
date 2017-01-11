@@ -1,3 +1,4 @@
+package source.main.mocha;
 import java.io.File;
 import java.io.IOException;
 import java.security.MessageDigest;
