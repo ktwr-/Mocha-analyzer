@@ -42,7 +42,7 @@ public class CSPSet {
 	 * @param directory
 	 * @return
 	 */
-	public Document setCSP(Document doc,int csplevel,String directory){
+	public Document setCSP(Document doc,int csplevel,String directory, JSList jsList){
 		System.out.println("setCSP start");
 		StringBuilder sb = new StringBuilder();
 		String policy = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *;script-src 'self' ";
@@ -52,7 +52,7 @@ public class CSPSet {
 		sb.append(policy);
 		if(csplevel == 1){
 			scriptdomain = new ArrayList<String>(search_domain_for1("script",doc));
-			ArrayList<String> url = new ArrayList<String>(list_url_jsfile(doc,directory));
+			ArrayList<String> url = new ArrayList<String>(listUrlJSfile(doc,directory));
 			scriptdomain.addAll(url);
 			if(!scriptdomain.isEmpty()) bscdomain = true;
 				
@@ -123,7 +123,7 @@ public class CSPSet {
 			//cs.add_path_matching(file);
 			try {
 				Document doc = Jsoup.parse(new File(file.get(0)),"UTF-8");
-				ArrayList<String> js_in_html_url = new ArrayList<String>(cs.list_url_jsfile(doc,"./test/"));
+				ArrayList<String> js_in_html_url = new ArrayList<String>(cs.listUrlJSfile(doc,"./test/"));
 				for(int i=0;i<js_in_html_url.size();i++){
 					System.out.println(js_in_html_url.get(i));
 				}
@@ -143,10 +143,9 @@ public class CSPSet {
 		tagmatch.put("link", "css");
 	}
 	
-	public ArrayList<String> list_url_jsfile(Document doc,String directory){
+	public ArrayList<String> listUrlJSfile(Document doc,String directory){
 		ArrayList<String> js_in_html = new ArrayList<String>(search_js_inhtml(doc,directory));
 		ArrayList<String> js_in_html_url = new ArrayList<String>();
-		System.out.println("test");
 		for(int i =0;i<js_in_html.size();i++){
 			System.out.println(js_in_html.get(i));
 			modify_ajax md = new modify_ajax();

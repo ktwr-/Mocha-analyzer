@@ -20,6 +20,7 @@ public class analyzeScript {
 	public static char idname = 'a';
 	public static char eventname = 'a';
 	public static HashMap<String,String> eventh;
+	public static int evalcount = 0;
 	
 	public static String LINE_SEPARATOR_PATTERN = "\r\n[\u2028\u2029\u0085]";
 	
@@ -65,25 +66,30 @@ public class analyzeScript {
 		System.out.println("finish createScript");
 		String mdset = setIntTime(source);
 		if(!mdset.equals(source)){
+			evalcount++;
 			overWrite(mdset,filename);
 			source = mdset;
 		}
 		String mddocwrite = check_docwrite(filename);
 		if(!mddocwrite.equals(source)){
+			evalcount++;
 			overWrite(mddocwrite,filename);
 			source = mddocwrite;
 		}
 		String mdevhandle = check_event_handler(filename);
 		if(!mdevhandle.equals(source)){
+			evalcount++;
 			overWrite(mdevhandle,filename);
 			source = mdevhandle;
 		}
 		Modify_eval me = new Modify_eval();
 		String mdev = me.extrace_evaltext(source,filename);
 		if(!mdev.equals(source)){
+			evalcount++;
 			overWrite(mdev,filename);
 			source = mdev;
 		}
+		System.out.println("evalcount = "+evalcount);
 		/*if(!source.equals(original)){
 			System.out.println("change script\n\n");
 			overWrite(source,filename);
@@ -102,8 +108,8 @@ public class analyzeScript {
 		String directory = patternmatch(filename,filepat).group(1);
 		String beforedot = patternmatch(filename,filepat).group(2);
 		for(int i=0;i<text.size();i++){
-			System.out.println("method:"+method.get(i));
-			System.out.println("text:"+text.get(i));
+			//System.out.println("method:"+method.get(i));
+			//System.out.println("text:"+text.get(i));
 			String temp = textanalyze(text.get(i),directory,beforedot);
 			if(temp.contains("event_handler_CSP_apply")){
 				String[] split = temp.split("event_handler_CSP_apply");
@@ -111,9 +117,9 @@ public class analyzeScript {
 				String js_write = split[1];
 				temp = split[0];
 			}
-			System.out.println("aaa:"+temp);
+			//System.out.println("aaa:"+temp);
 			file = file.replaceAll(Pattern.quote(text.get(i)), temp);
-			System.out.println("temp:\n"+ file);
+			//System.out.println("temp:\n"+ file);
 		}
 		//String pat = "([\\s\\S]*?)document\\.(write|writeln)\\(([\\s\\S]*)\\);[\\s\\S]*";
 		//Matcher m = Pattern.compile(pat).matcher(source);
@@ -141,8 +147,8 @@ public class analyzeScript {
 				String change_text = m.group(1)+"<script src=\""+directory+beforedot+jsname+".js\"></script>"+m.group(3);
 				overWrite(m.group(2),directory+beforedot+jsname+".js");
 				jsname++;
-				System.out.println(text);
-				System.out.println(change_text);
+				//System.out.println(text);
+				//System.out.println(change_text);
 				return change_text;
 			}
 		}
@@ -170,23 +176,23 @@ public class analyzeScript {
 				String script="";
 				if(mscript.find()){
 					script=mscript.group(2);
-					System.out.println(script);
+					//System.out.println(script);
 				}
 				String temp = tempevent(id,script,key);
-				System.out.println(temp);
-				System.out.println("\nmodify event handler");
+				//System.out.println(temp);
+				//System.out.println("\nmodify event handler");
 				if(idflag == 0){
 					// event handler don't have id
 					String change_text = mscript.group(1)+"id=\""+id+"\""+mscript.group(3);
-					System.out.println("change_text:"+change_text);
-					System.out.println("text:"+temp);
+					//System.out.println("change_text:"+change_text);
+					//System.out.println("text:"+temp);
 					return change_text+"event_handler_CSP_apply"+temp;
 					
 				}else{
 					// event handler have id
 					String change_text = mscript.group(1)+mscript.group(3);
-					System.out.println("change_text:"+change_text);
-					System.out.println("text:"+temp);
+					//System.out.println("change_text:"+change_text);
+					//System.out.println("text:"+temp);
 					return change_text+"event_handler_CSP_apply"+temp;
 					
 				}
@@ -222,7 +228,7 @@ public class analyzeScript {
 				source = source.replaceAll(Pattern.quote(outerHTML.get(i)), modify_outerHTML.get(i));
 			}
 		}}
-		System.out.println("modify\n"+source);
+		//System.out.println("modify\n"+source);
 		return source;
 		
 		

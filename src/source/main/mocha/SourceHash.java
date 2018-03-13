@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+//import javax.xml.bind.DatatypeConverter;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -21,16 +22,18 @@ import org.jsoup.select.Elements;
 
 public class SourceHash {
 	// javascript hash list
-	ArrayList<String> script_hashlist = new ArrayList<String>();
+	ArrayList<String> scriptHashlist = new ArrayList<String>();
 	// CSS hash list
-	ArrayList<String> style_hashlist = new ArrayList<String>();
+	ArrayList<String> styleHashlist = new ArrayList<String>();
+	
+	private static final String TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 	
 	SourceHash(){	
 	}
 	
 	public static void main(String args[]){
 		SourceHash sh = new SourceHash();
-		String test = sh.calc_hash("alert('引くなっ！');", "sha-256");
+		String test = sh.calc_hash("alert('1');", "sha-256");
 		System.out.println(test);
 	}
 	
@@ -46,9 +49,9 @@ public class SourceHash {
 			File file = new File(filename);
 			doc = Jsoup.parse(file,"UTF-8");
 			// find javascript and calculate source hash
-			script_hashlist = new ArrayList<String>(source_hash(doc,"script"));
+			scriptHashlist = new ArrayList<String>(source_hash(doc,"script"));
 			// find CSS and calculate source hash
-			style_hashlist = new ArrayList<String>(source_hash(doc,"style"));
+			styleHashlist = new ArrayList<String>(source_hash(doc,"style"));
 		}catch(IOException e){
 			System.out.println(e);
 		}
@@ -64,25 +67,25 @@ public class SourceHash {
 	public Document insertCSP(Document doc){
 		StringBuilder sb = new StringBuilder();
 			sb.append("<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *; script-src 'self' ");
-		if(!script_hashlist.isEmpty()){
-			for(int i = 0;i < script_hashlist.size();i++){	
+		if(!scriptHashlist.isEmpty()){
+			for(int i = 0;i < scriptHashlist.size();i++){	
 				sb.append("'");
 		//		System.out.println(script_hashlist.get(i));
-				sb.append(script_hashlist.get(i));
+				sb.append(scriptHashlist.get(i));
 				sb.append("' ");
 			}
 		}
 		sb.append(";obj-src 'self';style-src 'self' ");
-		if(!style_hashlist.isEmpty()){
-			for(int i = 0; i < style_hashlist.size();i++){
+		if(!styleHashlist.isEmpty()){
+			for(int i = 0; i < styleHashlist.size();i++){
 				sb.append("'");
-				sb.append(style_hashlist.get(i));
+				sb.append(styleHashlist.get(i));
 				sb.append("'");
 			}
 		}
 		sb.append(";\">");
 		Elements head = doc.getElementsByTag("head");
-		head.append(sb.toString());
+		head.first().before(sb.toString());
 		//System.out.println(doc.toString());
 		
 		return doc;
@@ -126,8 +129,67 @@ public class SourceHash {
 			System.out.println(e);
 		}
 		md.update(source.getBytes());
-		String encoded = Base64.getEncoder().encodeToString(md.digest());
-	    return encoded;
+		//String encoded = Base64.getEncoder().encodeToString(md.digest());
+		String oriencoded = encode(md.digest());
+		//System.out.println(encoded);
+		System.out.println(oriencoded);
+		//String encoded = DatatypeConverter.printBase64Binary(md.digest());
+	    return oriencoded;
 		
 	}
+	
+	public static String encode(String data){
+	    try{
+	      return encode(data.getBytes("UTF-8"));
+	    }catch(Exception e){
+	      return "";
+	    }
+	  }
+
+	  public static String encode(byte data[]){
+	    if(data.length == 0){ return ""; }
+	    
+	    int i;
+	    int index[] = new int[1 + data.length * 4 / 3];
+	    int count = 0;
+	    int limit = data.length - 3;
+	    int mod;
+	    int padding;
+	    StringBuilder result = new StringBuilder("");
+	    
+	    for(i = 0; i < limit; i+=3){
+	      index[count++] = (data[i] & 0xfc) >>> 2;
+	      index[count++] = ((data[i] & 0x03) << 4) + ((data[i+1] & 0xf0) >>> 4);
+	      index[count++] = ((data[i+1] & 0x0f) << 2) + ((data[i+2] & 0xc0) >>> 6);
+	      index[count++] = ((data[i+2]) & 0x3f);
+	    }
+	    
+	    mod = data.length % 3;
+	    if(mod == 0){
+	      index[count++] = (data[i] & 0xfc) >>> 2;
+	      index[count++] = ((data[i] & 0x03) << 4) + ((data[i+1] & 0xf0) >>> 4);
+	      index[count++] = ((data[i+1] & 0x0f) << 2) + ((data[i+2] & 0xc0) >>> 6);
+	      index[count++] = ((data[i+2]) & 0x3f);
+	    }
+	    else if(mod == 1){
+	      index[count++] = (data[i] & 0xfc) >>> 2;
+	      index[count++] = (data[i] & 0x03) << 4;
+	    }
+	    else if(mod == 2){
+	      index[count++] = (data[i] & 0xfc) >>> 2;
+	      index[count++] = ((data[i] & 0x03) << 4) + ((data[i+1] & 0xf0) >>> 4);
+	      index[count++] = (data[i+1] & 0x0f) << 2;
+	    }
+
+	    for(i = 0 ; i < count; i++){
+	      result.append(TABLE.charAt(index[i]));
+	    }
+	    
+	    padding = (4 - result.length() % 4) % 4;
+	    for(i = 0 ; i < padding ; i++){
+	      result.append("=");
+	    }
+	    
+	    return result.toString();
+	  }
 }

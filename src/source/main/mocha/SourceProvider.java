@@ -1,7 +1,7 @@
 package source.main.mocha;
 import java.io.IOException;
 
-import brut.apktool.*;
+import takeuchi.brut.apktool.*;
 import brut.common.BrutException;
 /**
  * This class provide source code from apk file. Use brut.apktool

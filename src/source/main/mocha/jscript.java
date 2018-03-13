@@ -1,13 +1,9 @@
 package source.main.mocha;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.regex.Pattern;
 
 
@@ -19,11 +15,6 @@ import org.jsoup.select.Elements;
 
 
 import java.util.regex.Matcher;
-
-// import package for using apktool
-import brut.apktool.*;
-
-
 
 public class jscript {
 	
@@ -42,6 +33,7 @@ public class jscript {
 	};
 	ArrayList<String> html_file = new ArrayList<String>();
 	ArrayList<String> js_file = new ArrayList<String>();
+	HashMap<String,ArrayList<String>> jsFileCheker = new HashMap<String,ArrayList<String>>(); // HashMap checks a JavaScript file is modified. ArrayList is file which is divide from JavaScript file.
 	ArrayList<String> ejs_file = new ArrayList<String>();
 	ArrayList<String> header;
 	ArrayList<String> body;
@@ -50,6 +42,8 @@ public class jscript {
 	char eventid = 'a';
 	char eventname= 'a';
 	int csplevel = 1;
+	public int inlinecount = 0;
+	public int evalcount = 0;
 	Boolean baJS = false;
 	Boolean noncesource =false;
 	
@@ -75,11 +69,11 @@ public class jscript {
 			
 			for(int i=0;i<ajs.html_file.size();i++){
 				jscript js = new jscript();
-				js.htmlanalyze(ajs.html_file.get(i));
+				js.htmlAnalyze(ajs.html_file.get(i));
 			}
 			for(int i=0;i<ajs.js_file.size();i++){
+				if(!ajs.js_file.get(i).contains("min.js") && !ajs.js_file.get(i).contains("leaflet") && !ajs.js_file.get(i).contains("data.js") && !ajs.js_file.get(i).contains("jquery")){
 				System.out.println("file:"+ajs.js_file.get(i));
-				if(!ajs.js_file.get(i).contains("min.js") && !ajs.js_file.get(i).contains("leaflet") && !ajs.js_file.get(i).contains("data.js")){
 					aS.analyzeScript(ajs.js_file.get(i));
 				}
 			}
@@ -115,13 +109,13 @@ public class jscript {
 					String directory = patternmatch(filename,filepat).group(1);
 					String beforedot = patternmatch(filename,filepat).group(2);
 					doc = sh.add_source_hash(filename);
-					String html = js.divideevent(doc, doc.toString(),directory);
+					String html = js.divideEvent(doc, doc.toString(),directory);
 					doc = Jsoup.parse(html);
 					doc = js.divide_styleid(doc,beforedot,directory);
 					doc = Jsoup.parse(html);
-					csp.setHashScript(sh.script_hashlist);
-					csp.setHashStyle(sh.style_hashlist);
-					doc = csp.setCSP(doc,ajs.csplevel,directory);
+					csp.setHashScript(sh.scriptHashlist);
+					csp.setHashStyle(sh.styleHashlist);
+					doc = csp.setCSP(doc,ajs.csplevel,directory,new JSList());
 					System.out.println("\nlast result\n");
 					System.out.println(doc.toString());
 					File file = new File(filename);
@@ -132,7 +126,11 @@ public class jscript {
 			}
 		}
 	}
-	
+	/**
+	 * 
+	 * @param doc
+	 * @return
+	 */
 	public Document insertCSP(Document doc){
 		Elements header = doc.getElementsByTag("head");
 		header.append("<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *; script-src 'self'; object-src 'self'; style-src 'self';\">");
@@ -140,11 +138,13 @@ public class jscript {
 	}
 	
 	
-	
-	
-	/**/
-	
-	public void htmlanalyze(String filename){
+	/**
+	 * This function overwrites file.
+	 * 
+	 * @param filename(String) which you want to analyze.
+	 * 
+	 **/
+	public void htmlAnalyze(String filename){
 		CSPSet csp = new CSPSet();
 		try{
 			String filepat = "(.*/)(.*)\\.(.*)";
@@ -154,22 +154,23 @@ public class jscript {
 			Document doc = Jsoup.parse(file, "UTF-8");
 			String html = doc.toString();
 			// divide javascript from html file
-			doc = divide_script(doc,before_dot,directory);
+			doc = divideScript(doc,before_dot,directory);
 			// divide CSS from html file
-			doc = dividestyle(doc,before_dot,directory);
+			doc = divideStyle(doc,before_dot,directory);
 			// divide CSS which contains id from html file
 			doc = divide_styleid(doc,before_dot,directory);
+			//doc = Jsoup.parse(html);
+			html = divideHref(doc,html);
 			doc = Jsoup.parse(html);
-			html = dividehref(doc,html);
+			html = divideEvent(doc,html,directory);
 			doc = Jsoup.parse(html);
-			html = divideevent(doc,html,directory);
-			doc = Jsoup.parse(html);
-			doc = csp.setCSP(doc,csplevel,directory);
+			doc = csp.setCSP(doc,csplevel,directory,new JSList());
 			html = doc.toString();
 			FileWriter fw = new FileWriter(file);
 			System.out.println("\nlast result\n"+html+"\n");
 			fw.write(html);
 			fw.close();
+			System.out.println("inline count = "+inlinecount);
 		}catch(IOException e){
 			System.out.println(e);
 		}
@@ -182,18 +183,18 @@ public class jscript {
 	 * @param filepath
 	 * @return
 	 */
-	public Document divide_script(Document doc, String beforedot,String filepath){
+	public Document divideScript(Document doc, String beforedot,String filepath){
 		Elements script = doc.getElementsByTag("script");
 		String html = doc.toString();
 		for(int i=0;i < script.size();i++){
 			Element tmp = script.get(i);
-			System.out.println(tmp.toString());
 			String pat="(.*)<script().*src=(.*)>(.*)";
 			if(Pattern.compile(pat).matcher(tmp.toString()).find()){
 				System.out.println("src");
 			}else{
-				String md_html = divide_script_from_file(tmp.data(),beforedot,filepath);
-				html = html.replaceFirst(Pattern.quote(tmp.toString()), md_html);
+				inlinecount++;
+				String mdHtml = divide_script_from_file(tmp.data(),beforedot,filepath);
+				html = html.replaceFirst(Pattern.quote(tmp.toString()), mdHtml);
 			}
 		}
 		return Jsoup.parse(html);
@@ -246,7 +247,7 @@ public class jscript {
 		return doc;
 	}
 	
-	public Document dividestyle(Document doc,String filename,String filepath){
+	public Document divideStyle(Document doc,String filename,String filepath){
 		Elements style = doc.getElementsByTag("style");
 		String html = doc.toString();
 		for(int i=0; i< style.size();i++){
@@ -259,7 +260,7 @@ public class jscript {
 		return doc;
 	}
 	
-	public String dividehref(Document doc,String html){
+	public String divideHref(Document doc,String html){
 			Elements atag = doc.getElementsByTag("a");
 			for(int i=0;i < atag.size();i++){
 				Element tmp = atag.get(i);
@@ -275,12 +276,15 @@ public class jscript {
 								String script = m.group(2);
 								Matcher onclickm = patternmatch(m.group(1)+"\"\""+m.group(3),onclickpat);
 								html = html.replaceFirst(Pattern.quote(m.group()), onclickm.group(1)+"onclick=\""+onclickm.group(2)+";"+script+"\""+onclickm.group(3));
+								inlinecount++;
 							/*pattern <a href="javascript:(javascript)void(0)></a>*/
 							}else{
+								inlinecount++;
 								html = html.replaceFirst(Pattern.quote(m.group()), m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
 							}
 						}else{
 							//System.out.println(m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
+							inlinecount++;
 							html = html.replaceFirst(Pattern.quote(m.group()), m.group(1)+"\"\" onclick=\""+m.group(2)+"\""+m.group(3));
 						}
 					}
@@ -290,9 +294,8 @@ public class jscript {
 		return html;
 	}
 	
-	public String divideevent(Document doc,String html,String filepath){
+	public String divideEvent(Document doc,String html,String filepath){
 		
-		System.out.println("\n divide event");
 		File file = new File(filepath+"event.js");
 		int flag=0;
 		try{
@@ -302,26 +305,33 @@ public class jscript {
 			}
 			
 			for(String key : eventhandler.keySet()){
-				System.out.println(key);
-				Elements evhand = doc.getElementsByAttribute(key);
-				for(int i=0;i<evhand.size();i++){
+				Elements evHand = doc.getElementsByAttribute(key);
+				for(int i=0;i<evHand.size();i++){
 					String evid="";
-					Element tmp = evhand.get(i);
-					Boolean preventevent = false;
-					String pat = "(.*)"+key+"=\"(.*?)\"(.*)";
-					String patid = "(.*)id=\"(.*?)\"(.*)";
-					Matcher m = patternmatch(tmp.toString(),pat);
+					Element tmp = evHand.get(i);
+					Boolean preventEvent = false;
+					String keyPattern = "(.*)"+key+"=\"(.*?)\"(.*)";
+					String idPattern = "(.*)id=\"(.*?)\"(.*)";
+					Matcher m = patternmatch(tmp.toString(),keyPattern);
 					String script = m.group(2);
-					Matcher mid = patternmatch(tmp.toString(),patid);
+					Matcher mid = patternmatch(tmp.toString(),idPattern);
+					/**
+					 * If the extracted JavaScript contains void(0), Mocha remove void(0). 
+					 */
 					if(m.group(2).contains("void(0)")){
-						preventevent = true;
+						inlinecount++;
+						preventEvent = true;
 						String rmvoid = tmp.toString().replace("void(0)", "");
 						html = html.replaceFirst(Pattern.quote(tmp.toString()), rmvoid);
-						m= patternmatch(rmvoid,pat);
+						m= patternmatch(rmvoid,keyPattern);
 						System.out.println(m.group());
 						script = m.group(2);
 					}
+					/**
+					 * If the tag doesn't have an id, Mocha adds an id to the tag.
+					 */
 					if(mid == null){
+						inlinecount++;
 						evid = String.valueOf(eventid);
 						html = html.replaceFirst(Pattern.quote(m.group()), m.group(1)+"id=\""+eventid+"\""+m.group(3));
 						eventid++;
@@ -330,7 +340,8 @@ public class jscript {
 						html = html.replaceFirst(Pattern.quote(m.group()), m.group(1)+m.group(3));
 					}
 					String template="";
-					if(preventevent){
+					if(preventEvent){
+						inlinecount++;
 						template = preventvoid(evid,script,key); 
 					}else{
 						template = tempevent(evid,script,key);
@@ -340,6 +351,10 @@ public class jscript {
 					flag = 1;
 				}
 			}
+			
+			/**
+			 * modify event handler type of onload
+			 */
 			for(String key : eventbody.keySet()){
 				Elements evbody = doc.getElementsByAttribute(key);
 				for(int i=0;i< evbody.size();i++){
@@ -424,14 +439,20 @@ public class jscript {
 		return mdhtml;
 	}
 	
+	
 	public String textStyleAttr(String id,String style){
 		return "#"+id+" { " +style+" }";
 	}
+	
+	
 	public String tempevent(String id,String script,String key){
-		String templete = "var ev"+eventname+" = function() {\n"
+		String templete = "var ev"+eventname+" = function(){ \n"
 				+ " var div = document.getElementById(\""+id+"\");\n"
-				+ "	var popup = function () { \n"
-				+ script +"; };\n div.addEventListener(\""+eventhandler.get(key)+"\",popup,false); };\n"
+				+ "	var popup = function (){ \n"
+				+ script +";\n"
+				+ " };\n"
+				+ " div.addEventListener(\""+eventhandler.get(key)+"\",popup,false);\n"
+				+ " };\n"
 				+ "window.addEventListener(\"load\",ev"+eventname+",false);\n";
 		eventname++;
 		
@@ -474,6 +495,11 @@ public class jscript {
 		return templete;
 	}
 	
+	/**
+	 * 
+	 * @param directoryname which you want to copying directory.
+	 * @throws IOException
+	 */
 	public static void copyfile(String directoryname) throws IOException{
 		String[] command = {"/bin/sh", "-c","cp -r ./"+directoryname+"/* ./csp"};
 		Runtime.getRuntime().exec("mkdir csp");
